@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>爱的储蓄罐 - Love Token Economy</title>
+    <style>
+        :root {
+            --pink-bg: #f5e6e8;
+            --pink-primary: #d5a4a9;
+            --pink-text: #8c6a6d;
+            --blue-bg: #e1e5ea;
+            --blue-primary: #9ba4b4;
+            --blue-text: #394867;
+            --white: #ffffff;
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --success: #52c41a;
+        }
+
+        body.role-girl { --theme-bg: var(--pink-bg); --theme-primary: var(--pink-primary); --theme-text: var(--pink-text); }
+        body.role-boy { --theme-bg: var(--blue-bg); --theme-primary: var(--blue-primary); --theme-text: var(--blue-text); }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--theme-bg); color: var(--theme-text);
+            transition: var(--transition); min-height: 100vh; padding-bottom: 80px;
+        }
+
+        header {
+            padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 15px;
+            background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px);
+            position: sticky; top: 0; z-index: 100;
+        }
+
+        .role-switcher { display: flex; background: rgba(255, 255, 255, 0.5); padding: 5px; border-radius: 50px; width: 200px; position: relative; }
+        .role-btn { flex: 1; padding: 8px; border: none; background: none; cursor: pointer; font-weight: 600; z-index: 1; transition: var(--transition); color: #999; }
+        .role-btn.active { color: var(--theme-text); }
+        .role-indicator { position: absolute; height: calc(100% - 10px); width: calc(50% - 5px); background: var(--white); border-radius: 50px; top: 5px; transition: var(--transition); box-shadow: var(--shadow); }
+        .role-boy .role-indicator { transform: translateX(100%); }
+
+        .score-container { text-align: center; }
+        .score-label { font-size: 0.9rem; opacity: 0.8; margin-bottom: 5px; }
+        .score-value { font-size: 2.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+        .checkin-btn {
+            margin-top: 10px; padding: 8px 24px; border-radius: 50px; border: none;
+            background: var(--theme-primary); color: white; font-weight: 700;
+            cursor: pointer; box-shadow: var(--shadow); transition: var(--transition);
+        }
+        .checkin-btn.disabled { background: #ccc; cursor: not-allowed; transform: none !important; }
+
+        main { padding: 20px; max-width: 600px; margin: 0 auto; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin: 20px 0 15px; }
+        .section-title { font-size: 1.2rem; font-weight: 700; }
+        .add-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--theme-primary); color: white; font-size: 1.5rem; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: var(--transition); }
+        .add-btn:active { transform: scale(0.9); }
+
+        .card-list { display: grid; gap: 15px; }
+        .card { background: var(--white); padding: 20px; border-radius: 20px; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; animation: slideIn 0.4s ease-out forwards; position: relative; overflow: hidden; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card-info { flex: 1; }
+        .card-info h3 { font-size: 1.1rem; margin-bottom: 5px; }
+        .card-info p { font-size: 0.85rem; opacity: 0.6; }
+        .card-desc { font-size: 0.8rem; margin: 8px 0; padding-left: 8px; border-left: 2px solid var(--theme-bg); color: #666; line-height: 1.4; }
+
+        .points-tag { background: var(--theme-bg); padding: 4px 12px; border-radius: 50px; font-size: 0.9rem; font-weight: 700; color: var(--theme-primary); white-space: nowrap; }
+        .action-btn { padding: 8px 16px; border-radius: 12px; border: none; background: var(--theme-primary); color: white; font-weight: 600; cursor: pointer; transition: var(--transition); white-space: nowrap; }
+        .action-btn:active { transform: scale(0.95); }
+        .secondary-btn { padding: 8px 12px; border-radius: 12px; border: 1px solid var(--theme-primary); background: transparent; color: var(--theme-primary); font-size: 0.8rem; cursor: pointer; transition: var(--transition); }
+        .delete-btn { color: #ff4d4f; border-color: #ff4d4f; }
+        .reject-btn { background: #ff4d4f !important; }
+
+        /* 日历样式 */
+        .calendar-card { background: var(--white); border-radius: 25px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 30px; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+        .calendar-day-label { font-size: 0.7rem; opacity: 0.5; font-weight: 700; padding: 5px 0; }
+        .calendar-day { aspect-ratio: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-radius: 12px; font-size: 0.85rem; position: relative; cursor: pointer; transition: var(--transition); border: 1px solid transparent; }
+        .calendar-day:hover { background: var(--theme-bg); }
+        .calendar-day.today { border: 2px solid var(--theme-primary); font-weight: 800; }
+        .calendar-day.checked-in { background: #e6f7ff; }
+        .calendar-day.other-month { opacity: 0.2; }
+        
+        /* 日历上的小点 - 增强版 */
+        .markers { display: flex; gap: 3px; position: absolute; bottom: 6px; justify-content: center; width: 100%; }
+        .marker { width: 6px; height: 6px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.5); }
+        .marker.event { background: #ff4d4f; box-shadow: 0 0 5px rgba(255, 77, 79, 0.5); }
+        .marker.user-event { background: #722ed1; box-shadow: 0 0 5px rgba(114, 46, 209, 0.5); }
+        .marker.note { background: #faad14; box-shadow: 0 0 5px rgba(250, 173, 20, 0.5); }
+        .marker.check { background: var(--success); box-shadow: 0 0 5px rgba(82, 196, 26, 0.5); }
+        
+        .calendar-day.has-event { background-color: rgba(255, 77, 79, 0.05); }
+        .calendar-day.has-user-event { background-color: rgba(114, 46, 209, 0.05); }
+
+        /* 恋爱空间样式 */
+        .space-section { margin-top: 40px; }
+        .post-card { background: var(--white); border-radius: 20px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 20px; animation: slideIn 0.4s ease-out; }
+        .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .post-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--theme-bg); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        .post-meta { flex: 1; }
+        .post-author { font-weight: 700; font-size: 0.95rem; }
+        .post-time { font-size: 0.75rem; opacity: 0.5; }
+        .post-content { font-size: 0.95rem; line-height: 1.6; margin-bottom: 12px; white-space: pre-wrap; }
+        .post-image { width: 100%; border-radius: 12px; margin-bottom: 12px; cursor: pointer; object-fit: cover; max-height: 300px; }
+        .post-location { font-size: 0.8rem; color: var(--theme-primary); display: flex; align-items: center; gap: 4px; margin-bottom: 12px; }
+        
+        .comment-section { border-top: 1px solid #f0f0f0; padding-top: 12px; margin-top: 12px; }
+        .comment-item { margin-bottom: 10px; font-size: 0.85rem; }
+        .comment-author { font-weight: 700; color: var(--theme-text); }
+        .comment-content { margin-left: 4px; }
+        .reply-btn { font-size: 0.75rem; color: var(--theme-primary); cursor: pointer; margin-left: 8px; }
+        
+        .comment-input-group { display: flex; gap: 8px; margin-top: 10px; }
+        .comment-input-group input { flex: 1; padding: 8px 12px; border: 1px solid var(--theme-bg); border-radius: 20px; font-size: 0.85rem; outline: none; }
+        
+        .reply-item { margin-left: 20px; margin-top: 5px; font-size: 0.8rem; opacity: 0.9; padding-left: 8px; border-left: 2px solid var(--theme-bg); }
+        
+        #location-display { font-size: 0.8rem; opacity: 0.6; margin-top: 5px; display: block; }
+        
+        /* 提醒栏 */
+        .reminder-bar { background: #fff3f3; color: #ff4d4f; padding: 12px 20px; border-radius: 15px; margin-bottom: 20px; font-size: 0.9rem; display: flex; align-items: center; gap: 10px; border: 1px solid #ffcccc; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 0.9; } 50% { opacity: 1; transform: scale(1.01); } 100% { opacity: 0.9; } }
+
+        /* 弹窗系统 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal { background: var(--white); width: 90%; max-width: 450px; padding: 30px; border-radius: 25px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2); max-height: 90vh; overflow-y: auto; }
+        .modal h2 { margin-bottom: 20px; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 0.9rem; margin-bottom: 8px; opacity: 0.8; }
+        .input-group input, .input-group textarea { width: 100%; padding: 12px; border: 2px solid var(--theme-bg); border-radius: 12px; outline: none; transition: var(--transition); font-family: inherit; }
+        .input-group textarea { height: 80px; resize: none; }
+        .input-group input:focus, .input-group textarea:focus { border-color: var(--theme-primary); }
+        .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+        .modal-actions button { flex: 1; padding: 12px; border-radius: 12px; border: none; cursor: pointer; font-weight: 600; }
+        .cancel-btn { background: #eee; }
+        .confirm-btn { background: var(--theme-primary); color: white; }
+
+        #setup-overlay, #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--theme-bg); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; }
+        .setup-card, .login-card { background: var(--white); width: 90%; max-width: 400px; padding: 40px; border-radius: 30px; box-shadow: var(--shadow); text-align: center; }
+        
+        .logout-btn { position: absolute; right: 20px; top: 20px; padding: 6px 12px; font-size: 0.75rem; border: 1px solid #ff4d4f; color: #ff4d4f; background: transparent; border-radius: 50px; cursor: pointer; }
+        
+        #canvas { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999; }
+        .system-footer { max-width: 600px; margin: 40px auto 0; padding: 0 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .reset-trigger { opacity: 0.3; font-size: 0.8rem; cursor: pointer; transition: var(--transition); border: none; background: none; color: var(--theme-text); }
+        .reset-trigger:hover { opacity: 0.8; color: #ff4d4f; }
+
+        @media (max-width: 480px) {
+            .score-value { font-size: 2rem; }
+            .card { padding: 15px; flex-direction: column; align-items: flex-start; gap: 12px; }
+            .card > div:last-child { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+        }
+    </style>
+</head>
+<body class="role-girl">
+    <canvas id="canvas"></canvas>
+
+    <div id="login-overlay">
+        <div class="login-card">
+            <h2 id="login-title">🔐 爱的储蓄罐</h2>
+            <p style="margin-bottom: 20px; opacity: 0.6; font-size: 0.9rem;" id="login-hint">请输入账号密码进入你们的空间</p>
+            <div class="input-group">
+                <label>账号</label>
+                <input type="text" id="login-account" placeholder="请输入你的账号">
+            </div>
+            <div class="input-group">
+                <label>密码</label>
+                <input type="password" id="login-pw" placeholder="请输入你的密码">
+            </div>
+            <button class="action-btn" style="width: 100%;" onclick="handleLogin()">登录</button>
+            <div style="display: flex; justify-content: space-between; margin-top: 15px;">
+                <p id="register-tip" style="font-size: 0.8rem; opacity: 0.5; cursor: pointer;" onclick="toggleLoginMode()">还没有账号？点击去注册</p>
+                <p id="forgot-pw-tip" style="font-size: 0.8rem; opacity: 0.5; cursor: pointer; color: var(--theme-primary);" onclick="showRecoveryModal()">忘记密码？</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="setup-overlay">
+        <div class="setup-card">
+            <h2>🏠 账号注册</h2>
+            <p style="margin-bottom: 10px; opacity: 0.6; font-size: 0.9rem;" id="setup-hint">选择你的身份并创建你的专属账号</p>
+            
+            <div class="input-group">
+                <label>选择身份</label>
+                <div style="display: flex; gap: 10px; margin-top: 5px;">
+                    <label id="role-label-girl" style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; border: 2px solid var(--theme-bg); border-radius: 12px; cursor: pointer; transition: 0.3s;">
+                        <input type="radio" name="setup-role" value="girl" style="width: auto; margin-right: 5px;" checked onchange="updateSetupTheme('girl')"> 🚺 女生
+                    </label>
+                    <label id="role-label-boy" style="flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px; border: 2px solid var(--theme-bg); border-radius: 12px; cursor: pointer; transition: 0.3s;">
+                        <input type="radio" name="setup-role" value="boy" style="width: auto; margin-right: 5px;" onchange="updateSetupTheme('boy')"> 🚹 男生
+                    </label>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label>账号名称</label>
+                <input type="text" id="setup-name" placeholder="设置你的昵称">
+            </div>
+            <div class="input-group">
+                <label>设置密码</label>
+                <input type="password" id="setup-pw1" placeholder="设置你的专属密码">
+            </div>
+            <div class="input-group">
+                <label>确认密码</label>
+                <input type="password" id="setup-pw2" placeholder="请再次输入密码">
+            </div>
+            
+            <div class="input-group">
+                <label>密保问题</label>
+                <select id="setup-question-select" style="width: 100%; padding: 12px; border: 2px solid var(--theme-bg); border-radius: 12px; outline: none; background: white; margin-bottom: 8px;" onchange="toggleCustomQuestion()">
+                    <option value="我们第一次见面的地方是？">我们第一次见面的地方是？</option>
+                    <option value="对方的生日是哪一天？">对方的生日是哪一天？</option>
+                    <option value="对方最喜欢的食物是？">对方最喜欢的食物是？</option>
+                    <option value="我们养的第一只宠物叫什么？">我们养的第一只宠物叫什么？</option>
+                    <option value="custom">-- 自定义密保问题 --</option>
+                </select>
+                <input type="text" id="setup-question-custom" placeholder="输入自定义密保问题" style="display: none; margin-top: 5px;">
+            </div>
+            <div class="input-group">
+                <label>密保答案</label>
+                <input type="text" id="setup-answer" placeholder="请输入密保答案">
+            </div>
+
+            <button class="action-btn" style="width: 100%;" id="setup-btn" onclick="handleRegister()">开始使用</button>
+            <p style="margin-top: 15px; font-size: 0.8rem; opacity: 0.5; cursor: pointer;" onclick="toggleLoginMode()">已有账号？返回登录</p>
+        </div>
+    </div>
+
+    <header>
+        <button class="logout-btn" onclick="handleLogout()">登出</button>
+        <div class="role-switcher" style="display: none;">
+            <div class="role-indicator"></div>
+            <button class="role-btn active" onclick="switchRole('girl')">女生</button>
+            <button class="role-btn" onclick="switchRole('boy')">男生</button>
+        </div>
+        <div class="score-container">
+            <p class="score-label"><span id="role-name">小主</span> 的当前积分</p>
+            <div class="score-value" id="current-score">0</div>
+            <button id="checkin-btn" class="checkin-btn" onclick="handleCheckIn()">✨ 每日签到</button>
+        </div>
+    </header>
+
+    <main>
+        <div id="reminder-container"></div>
+
+        <section class="calendar-card">
+            <div class="calendar-header">
+                <h2 style="font-size: 1.1rem;">📅 爱的纪念历</h2>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <span id="calendar-month" style="font-weight: 700;"></span>
+                    <div style="display: flex; gap: 5px;">
+                        <button class="secondary-btn" style="padding: 2px 8px;" onclick="changeMonth(-1)">&lt;</button>
+                        <button class="secondary-btn" style="padding: 2px 8px;" onclick="changeMonth(1)">&gt;</button>
+                    </div>
+                </div>
+            </div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+            <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.7rem; opacity: 0.6;">
+                <div style="display:flex; align-items:center; gap:4px;"><span class="marker event" style="display:inline-block; position:static;"></span> 系统纪念日</div>
+                <div style="display:flex; align-items:center; gap:4px;"><span class="marker user-event" style="display:inline-block; position:static;"></span> 自定义纪念日</div>
+                <div style="display:flex; align-items:center; gap:4px;"><span class="marker note" style="display:inline-block; position:static;"></span> 日记备注</div>
+                <div style="display:flex; align-items:center; gap:4px;"><span class="marker check" style="display:inline-block; position:static;"></span> 已签到</div>
+            </div>
+        </section>
+
+        <section id="request-section" style="display: none; margin-bottom: 30px;">
+            <div class="section-header"><h2 class="section-title">📩 收到申请 (待我审批)</h2></div>
+            <div id="request-list" class="card-list"></div>
+        </section>
+
+        <section id="my-request-section" style="display: none; margin-bottom: 30px;">
+            <div class="section-header"><h2 class="section-title">📤 我的申请 (等待对方)</h2></div>
+            <div id="my-request-list" class="card-list"></div>
+        </section>
+
+        <section style="margin-bottom: 30px;">
+            <div class="section-header">
+                <h2 class="section-title">💡 心愿清单 (投喂计划)</h2>
+                <button class="add-btn" onclick="openModal('wishlist')">+</button>
+            </div>
+            <div id="wishlist-list" class="card-list"></div>
+        </section>
+
+        <section>
+            <div class="section-header">
+                <h2 class="section-title">✨ 悬赏任务</h2>
+                <button class="add-btn" onclick="openModal('task')">+</button>
+            </div>
+            <div id="task-list" class="card-list"></div>
+        </section>
+
+        <section style="margin-top: 40px;">
+            <div class="section-header">
+                <h2 class="section-title">🎁 愿望商店</h2>
+                <button class="add-btn" onclick="openModal('wish')">+</button>
+            </div>
+            <div id="wish-list" class="card-list"></div>
+        </section>
+
+        <section style="margin-top: 40px;">
+            <div class="section-header"><h2 class="section-title">📜 积分变动记录</h2></div>
+            <div id="history-list" class="history-list"></div>
+        </section>
+
+        <section class="space-section">
+            <div class="section-header">
+                <h2 class="section-title">☁️ 恋爱空间 (QQ空间式)</h2>
+                <button class="add-btn" onclick="openModal('space_post')">+</button>
+            </div>
+            <div id="space-list"></div>
+        </section>
+
+        <footer class="system-footer">
+            <p style="font-size: 0.8rem; opacity: 0.4;">爱的储蓄罐 v10.0</p>
+            <button class="reset-trigger" onclick="openResetModal()">⚠️ 重置系统数据</button>
+        </footer>
+    </main>
+
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <h2 id="modal-title">详情</h2>
+            <div id="modal-form">
+                <div class="input-group">
+                    <label id="modal-label-1">名称</label>
+                    <input type="text" id="input-name">
+                </div>
+                <div class="input-group" id="points-group">
+                    <label id="modal-label-2">积分</label>
+                    <input type="number" id="input-points">
+                </div>
+                <div class="input-group" id="desc-group">
+                    <label id="modal-label-3">描述</label>
+                    <textarea id="input-desc"></textarea>
+                </div>
+                <div class="input-group" id="evidence-group" style="display: none;">
+                    <label id="file-label">证据图片</label>
+                    <input type="file" id="input-file" accept="image/*">
+                </div>
+                <div id="location-display"></div>
+            </div>
+            <div id="day-detail" style="display: none;">
+                <div id="day-events-list" style="margin-bottom: 20px; line-height: 1.6;"></div>
+                <div class="input-group">
+                    <label>自定义纪念日名称 (选填)</label>
+                    <input type="text" id="day-event-input" placeholder="例如：第一次看电影">
+                </div>
+                <div class="input-group">
+                    <label>今日日记/备注 (选填)</label>
+                    <textarea id="day-note-input" placeholder="记录今天的小确幸..."></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="cancel-btn" onclick="closeModal()">取消</button>
+                <button class="confirm-btn" id="modal-confirm-btn" onclick="handleConfirm()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SOLAR_TERMS = ["小寒","大寒","立春","雨水","惊蛰","春分","清明","谷雨","立夏","小满","芒种","夏至","小暑","大暑","立秋","处暑","白露","秋分","寒露","霜降","立冬","小雪","大雪","冬至"];
+        const TERM_INFO = [0, 21208, 42467, 63836, 85337, 107014, 128867, 150921, 173149, 195551, 218072, 240693, 263343, 285989, 308563, 331033, 353350, 375494, 397447, 419210, 440795, 462224, 483532, 504758];
+        const HOLIDAYS = { "0101": "元旦", "0214": "情人节", "0501": "劳动节", "0504": "青年节", "0520": "520告白日", "0601": "儿童节", "1001": "国庆节", "1225": "圣诞节" };
+        const ANNIVERSARY_DAYS = [30, 50, 100, 520, 666, 888, 1314];
+
+        const STORAGE_KEY = 'love_token_data_v10';
+        let state = {
+            currentRole: 'girl', scores: { girl: 0, boy: 0 },
+            accounts: { girl: null, boy: null },
+            passwords: { girl: null, boy: null },
+            questions: { girl: null, boy: null },
+            answers: { girl: null, boy: null },
+            tasks: [], wishes: [], wishlist: [], requests: [], history: [],
+            startDate: new Date().toISOString(),
+            checkIns: {}, userEvents: {}, userNotes: {},
+            posts: []
+        };
+
+        let currentUser = null; // 当前登录的用户
+
+        let viewDate = new Date();
+        let editingDate = null;
+
+        function formatLocalDate(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        function loadData() {
+            let saved = localStorage.getItem(STORAGE_KEY);
+            
+            // 尝试从 v9 迁移
+            if (!saved) {
+                const oldSaved = localStorage.getItem('love_token_data_v9');
+                if (oldSaved) {
+                    const oldState = JSON.parse(oldSaved);
+                    state = { ...state, ...oldState };
+                    if (!state.questions) state.questions = { girl: null, boy: null };
+                    if (!state.answers) state.answers = { girl: null, boy: null };
+                    saveData();
+                    saved = localStorage.getItem(STORAGE_KEY);
+                }
+            } else {
+                state = JSON.parse(saved);
+            }
+            
+            // 检查自动登录 (Session 模拟)
+            const sessionUser = sessionStorage.getItem('current_user');
+            const hasRegistered = state.passwords && (state.passwords.girl || state.passwords.boy);
+
+            if (sessionUser && hasRegistered) {
+                currentUser = sessionUser;
+                state.currentRole = currentUser;
+                document.body.className = `role-${currentUser}`;
+                renderAll();
+            } else if (!hasRegistered) {
+                showSetup();
+            } else {
+                showLogin();
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('login-overlay').style.display = 'flex';
+            document.getElementById('setup-overlay').style.display = 'none';
+            // 回填记忆的账号
+            const rememberedAccount = localStorage.getItem('remembered_account');
+            if (rememberedAccount) {
+                document.getElementById('login-account').value = rememberedAccount;
+            }
+        }
+
+        function showSetup() {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('setup-overlay').style.display = 'flex';
+            updateSetupTheme('girl'); // 默认选中女生主题
+        }
+
+        function updateSetupTheme(role) {
+            const girlLabel = document.getElementById('role-label-girl');
+            const boyLabel = document.getElementById('role-label-boy');
+            const setupCard = document.querySelector('.setup-card');
+            
+            if (role === 'girl') {
+                girlLabel.style.borderColor = 'var(--pink-primary)';
+                girlLabel.style.backgroundColor = 'var(--pink-bg)';
+                boyLabel.style.borderColor = 'var(--theme-bg)';
+                boyLabel.style.backgroundColor = 'transparent';
+                setupCard.style.borderTop = '5px solid var(--pink-primary)';
+            } else {
+                boyLabel.style.borderColor = 'var(--blue-primary)';
+                boyLabel.style.backgroundColor = 'var(--blue-bg)';
+                girlLabel.style.borderColor = 'var(--theme-bg)';
+                girlLabel.style.backgroundColor = 'transparent';
+                setupCard.style.borderTop = '5px solid var(--blue-primary)';
+            }
+
+            // 检查是否已经注册
+            if (state.passwords && state.passwords[role]) {
+                document.getElementById('setup-hint').innerText = `⚠️ 该身份已被注册，只有一男一女两个账号哦`;
+                document.getElementById('setup-hint').style.color = '#ff4d4f';
+                document.getElementById('setup-btn').disabled = true;
+                document.getElementById('setup-btn').style.opacity = '0.5';
+            } else {
+                document.getElementById('setup-hint').innerText = `选择你的身份并创建你的专属账号`;
+                document.getElementById('setup-hint').style.color = 'inherit';
+                document.getElementById('setup-btn').disabled = false;
+                document.getElementById('setup-btn').style.opacity = '1';
+            }
+        }
+
+        function handleLogin() {
+            const acc = document.getElementById('login-account').value.trim();
+            const pw = document.getElementById('login-pw').value;
+
+            if (!acc || !pw) return alert('请输入账号和密码');
+
+            let role = null;
+            if (acc === state.accounts.girl) role = 'girl';
+            else if (acc === state.accounts.boy) role = 'boy';
+            else return alert('账号未找到，请检查名称或前往注册');
+
+            if (!state.passwords[role]) return alert('该身份尚未注册，请先注册');
+            if (pw !== state.passwords[role]) return alert('密码错误');
+
+            // 登录成功
+            currentUser = role;
+            state.currentRole = role;
+            sessionStorage.setItem('current_user', role);
+            localStorage.setItem('remembered_account', acc);
+            
+            document.body.className = `role-${role}`;
+            document.getElementById('login-overlay').style.display = 'none';
+            renderAll();
+            createHeartEffect();
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            sessionStorage.removeItem('current_user');
+            location.reload();
+        }
+
+        function toggleLoginMode() {
+            const isLoginVisible = document.getElementById('login-overlay').style.display === 'flex';
+            if (isLoginVisible) {
+                showSetup();
+            } else {
+                showLogin();
+            }
+        }
+
+        function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+        function handleRegister() {
+            const role = document.querySelector('input[name="setup-role"]:checked').value;
+            const name = document.getElementById('setup-name').value.trim();
+            const pw1 = document.getElementById('setup-pw1').value;
+            const pw2 = document.getElementById('setup-pw2').value;
+            
+            let question = document.getElementById('setup-question-select').value;
+            if (question === 'custom') {
+                question = document.getElementById('setup-question-custom').value.trim();
+            }
+            const answer = document.getElementById('setup-answer').value.trim();
+
+            if (!name) return alert('请输入账号名称');
+            if (!pw1 || pw1 !== pw2) return alert('请确保密码一致');
+            if (!question) return alert('请选择或输入密保问题');
+            if (!answer) return alert('请输入密保答案');
+            
+            if (state.passwords[role]) {
+                return alert('该身份已经注册过了，每个空间只能有一男一女哦');
+            }
+
+            // 设置初始注册日期 (仅在第一个人注册时)
+            if (!state.passwords.girl && !state.passwords.boy) {
+                state.startDate = new Date().toISOString();
+            }
+
+            state.accounts[role] = name;
+            state.passwords[role] = pw1;
+            state.questions[role] = question;
+            state.answers[role] = answer;
+            
+            saveData();
+            alert('注册成功！快去登录吧');
+            showLogin();
+        }
+
+        function toggleCustomQuestion() {
+            const select = document.getElementById('setup-question-select');
+            const customInput = document.getElementById('setup-question-custom');
+            customInput.style.display = select.value === 'custom' ? 'block' : 'none';
+        }
+
+        let recoveryRole = null;
+        function showRecoveryModal() {
+            currentModalType = 'recovery_acc';
+            document.getElementById('modal-title').innerText = '找回密码 (1/2)';
+            document.getElementById('modal-form').style.display = 'block';
+            document.getElementById('day-detail').style.display = 'none';
+            document.getElementById('modal-confirm-btn').style.display = 'block';
+            
+            document.getElementById('points-group').style.display = 'none';
+            document.getElementById('desc-group').style.display = 'none';
+            document.getElementById('evidence-group').style.display = 'none';
+            
+            document.getElementById('modal-label-1').innerText = '请输入你的账号名称';
+            document.getElementById('input-name').type = 'text';
+            document.getElementById('input-name').placeholder = '输入你的账号昵称';
+            document.getElementById('input-name').value = '';
+            
+            // 关键修复：设置 z-index 确保找回密码弹窗盖在登录遮罩之上
+            const modalOverlay = document.getElementById('modal-overlay');
+            modalOverlay.style.zIndex = '3000'; 
+            modalOverlay.style.display = 'flex';
+        }
+
+        function switchRole(role) {
+            // 已禁用手动切换，此函数仅供内部兼容使用
+            state.currentRole = role; 
+            document.body.className = `role-${role}`;
+            renderAll(); 
+            saveData();
+        }
+
+        function getSolarTerm(y, n) {
+            const offDate = new Date((31556925974.7 * (y - 1900) + TERM_INFO[n] * 60000) + Date.UTC(1900, 0, 6, 2, 5));
+            return offDate.getUTCDate();
+        }
+
+        function getEventsForDate(date) {
+            const events = [];
+            const mmdd = `${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+            const yyyymmdd = formatLocalDate(date);
+            
+            if (HOLIDAYS[mmdd]) events.push({ type: 'system', text: `🌸 ${HOLIDAYS[mmdd]}` });
+            const y = date.getFullYear(), m = date.getMonth();
+            if (date.getDate() === getSolarTerm(y, m * 2)) events.push({ type: 'system', text: `🍂 ${SOLAR_TERMS[m * 2]}` });
+            if (date.getDate() === getSolarTerm(y, m * 2 + 1)) events.push({ type: 'system', text: `🍂 ${SOLAR_TERMS[m * 2 + 1]}` });
+
+            const start = new Date(state.startDate); start.setHours(0,0,0,0);
+            const diff = Math.floor((date - start) / (1000 * 60 * 60 * 24)) + 1;
+            if (ANNIVERSARY_DAYS.includes(diff)) events.push({ type: 'system', text: `💝 陪伴第 ${diff} 天` });
+
+            if (state.userEvents[mmdd]) events.push({ type: 'user', text: `⭐ ${state.userEvents[mmdd]}` });
+            if (state.userNotes[yyyymmdd]) events.push({ type: 'note', text: `📝 ${state.userNotes[yyyymmdd]}` });
+            
+            return events;
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            const monthTitle = document.getElementById('calendar-month');
+            const year = viewDate.getFullYear(), month = viewDate.getMonth();
+            monthTitle.innerText = `${year}年${month + 1}月`;
+            grid.innerHTML = ['日','一','二','三','四','五','六'].map(d => `<div class="calendar-day-label">${d}</div>`).join('');
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const prevDays = new Date(year, month, 0).getDate();
+
+            for (let i = firstDay - 1; i >= 0; i--) renderDay(year, month - 1, prevDays - i, true);
+            for (let i = 1; i <= daysInMonth; i++) renderDay(year, month, i, false);
+            const remaining = (7 - (firstDay + daysInMonth) % 7) % 7;
+            for (let i = 1; i <= remaining; i++) renderDay(year, month + 1, i, true);
+            
+            const todayStr = formatLocalDate(new Date());
+            const btn = document.getElementById('checkin-btn');
+            if (state.checkIns[todayStr] && state.checkIns[todayStr].includes(state.currentRole)) {
+                btn.innerText = '✅ 今日已签到'; btn.classList.add('disabled');
+            } else {
+                btn.innerText = '✨ 每日签到'; btn.classList.remove('disabled');
+            }
+            checkReminders();
+        }
+
+        function renderDay(y, m, d, isOther) {
+            const date = new Date(y, m, d);
+            const yyyymmdd = formatLocalDate(date);
+            const mmdd = `${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+            const events = getEventsForDate(date);
+            const isToday = new Date().toDateString() === date.toDateString();
+            const checked = state.checkIns[yyyymmdd] && state.checkIns[yyyymmdd].includes(state.currentRole);
+            
+            const hasSysEvent = events.some(e => e.type === 'system');
+            const hasUserEvent = !!state.userEvents[mmdd];
+
+            const dayEl = document.createElement('div');
+            dayEl.className = `calendar-day ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''} ${checked ? 'checked-in' : ''} ${hasSysEvent ? 'has-event' : ''} ${hasUserEvent ? 'has-user-event' : ''}`;
+            dayEl.innerHTML = `<span>${d}</span><div class="markers"></div>`;
+            const markers = dayEl.querySelector('.markers');
+            if (hasSysEvent) markers.innerHTML += '<span class="marker event"></span>';
+            if (hasUserEvent) markers.innerHTML += '<span class="marker user-event"></span>';
+            if (state.userNotes[yyyymmdd]) markers.innerHTML += '<span class="marker note"></span>';
+            if (state.checkIns[yyyymmdd]) markers.innerHTML += '<span class="marker check"></span>';
+            
+            dayEl.onclick = () => openDayModal(date);
+            document.getElementById('calendar-grid').appendChild(dayEl);
+        }
+
+        function openDayModal(date) {
+            editingDate = date;
+            const yyyymmdd = formatLocalDate(date);
+            const mmdd = `${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+            const events = getEventsForDate(date);
+            
+            currentModalType = 'day_edit';
+            document.getElementById('modal-title').innerText = `${date.getMonth()+1}月${date.getDate()}日`;
+            document.getElementById('modal-form').style.display = 'none';
+            document.getElementById('day-detail').style.display = 'block';
+            document.getElementById('modal-confirm-btn').style.display = 'block';
+            
+            document.getElementById('day-events-list').innerHTML = events.length ? events.map(e => `<div>${e.text}</div>`).join('') : '<div style="opacity:0.5;">今天没有特殊纪念日</div>';
+            document.getElementById('day-event-input').value = state.userEvents[mmdd] || '';
+            document.getElementById('day-note-input').value = state.userNotes[yyyymmdd] || '';
+            
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
+        function handleCheckIn() {
+            if (!currentUser) return showLogin();
+            const todayStr = formatLocalDate(new Date());
+            if (state.checkIns[todayStr] && state.checkIns[todayStr].includes(state.currentRole)) return;
+            
+            const events = getEventsForDate(new Date());
+            const isSpecial = events.some(e => e.type === 'system');
+            const points = isSpecial ? 3 : 1;
+            
+            state.scores[state.currentRole] += points;
+            if (!state.checkIns[todayStr]) state.checkIns[todayStr] = [];
+            state.checkIns[todayStr].push(state.currentRole);
+            
+            const accountName = state.currentRole === 'girl' ? state.accounts.girl : state.accounts.boy;
+            addHistory(`${accountName} 签到成功，获得 ${points} 积分${isSpecial ? ' (纪念日奖励!)' : ''}`);
+            createHeartEffect(); renderAll(); saveData();
+        }
+
+        function handleConfirm() {
+            if (currentModalType === 'recovery_acc') {
+                const acc = document.getElementById('input-name').value.trim();
+                let role = null;
+                if (acc === state.accounts.girl) role = 'girl';
+                else if (acc === state.accounts.boy) role = 'boy';
+                else return alert('该账号不存在，请检查名称');
+
+                if (!state.questions[role]) return alert('该账号未设置密保，无法找回');
+
+                recoveryRole = role;
+                currentModalType = 'recovery_answer';
+                document.getElementById('modal-title').innerHTML = '<span style="color: var(--theme-primary)">找回密码</span> <small style="font-size: 0.8rem; opacity: 0.5;">(第二步: 验证密保)</small>';
+                document.getElementById('modal-label-1').innerHTML = `<span style="font-size: 0.85rem; color: #666;">密保问题：</span><br>${state.questions[role]}`;
+                document.getElementById('input-name').value = '';
+                document.getElementById('input-name').placeholder = '请输入你的密保答案';
+                document.getElementById('modal-confirm-btn').innerText = '提交答案';
+                return;
+            }
+            if (currentModalType === 'recovery_answer') {
+                const ans = document.getElementById('input-name').value.trim();
+                if (ans === state.answers[recoveryRole]) {
+                    alert(`找回成功！你的密码是: ${state.passwords[recoveryRole]}`);
+                    closeModal();
+                } else {
+                    alert('答案错误，请仔细回忆');
+                }
+                return;
+            }
+            if (currentModalType === 'day_edit') {
+                const mmdd = `${String(editingDate.getMonth() + 1).padStart(2, '0')}${String(editingDate.getDate()).padStart(2, '0')}`;
+                const yyyymmdd = formatLocalDate(editingDate);
+                const eventVal = document.getElementById('day-event-input').value.trim();
+                const noteVal = document.getElementById('day-note-input').value.trim();
+                
+                if (eventVal) state.userEvents[mmdd] = eventVal; else delete state.userEvents[mmdd];
+                if (noteVal) state.userNotes[yyyymmdd] = noteVal; else delete state.userNotes[yyyymmdd];
+                
+                renderAll(); saveData(); closeModal(); return;
+            }
+            if (currentModalType === 'reset') {
+                if (document.getElementById('input-name').value === state.passwords[state.currentRole]) {
+                    if (confirm('确定重置吗？重置将清除所有数据并退出。')) { localStorage.removeItem(STORAGE_KEY); location.reload(); }
+                } else alert('密码错误');
+                return;
+            }
+            if (currentModalType === 'task_apply') {
+                const file = document.getElementById('input-file').files[0];
+                if (!file) return alert('请上传证据');
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const task = state.tasks.find(t => t.id === editingId);
+                    state.requests.push({ id: Date.now(), type: 'task', name: task.name, points: task.points, desc: task.desc, requester: state.currentRole, targetRole: state.currentRole === 'girl' ? 'boy' : 'girl', image: e.target.result });
+                    renderAll(); saveData(); closeModal(); alert('申请已发送');
+                };
+                reader.readAsDataURL(file); return;
+            }
+            if (currentModalType === 'space_post') {
+                const content = document.getElementById('input-desc').value.trim();
+                const file = document.getElementById('input-file').files[0];
+                const location = document.getElementById('location-display').innerText.replace('正在获取位置...', '').trim();
+                
+                if (!content && !file) return alert('写点什么或发张图吧');
+
+                const createPostData = (img = null) => {
+                    state.posts.push({
+                        id: Date.now(),
+                        role: state.currentRole,
+                        content: content || '分享美好瞬间',
+                        image: img,
+                        location: location || '某个浪漫的角落',
+                        time: new Date().toLocaleString(),
+                        comments: []
+                    });
+                    renderAll(); saveData(); closeModal();
+                };
+
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => createPostData(e.target.result);
+                    reader.readAsDataURL(file);
+                } else {
+                    createPostData();
+                }
+                return;
+            }
+
+            const name = document.getElementById('input-name').value;
+            const points = parseInt(document.getElementById('input-points').value) || 0;
+            const desc = document.getElementById('input-desc').value;
+
+            if (currentModalType === 'wishlist') {
+                state.requests.push({ id: Date.now(), type: 'wishlist_apply', name, points, desc, requester: state.currentRole, targetRole: state.currentRole === 'girl' ? 'boy' : 'girl' });
+            } else {
+                const list = currentModalType === 'task' ? state.tasks : state.wishes;
+                list.push({ id: Date.now(), name, points, desc, creator: state.currentRole });
+            }
+            renderAll(); saveData(); closeModal();
+        }
+
+        function checkReminders() {
+            const today = new Date(); const events = getEventsForDate(today);
+            const container = document.getElementById('reminder-container');
+            if (events.length > 0) container.innerHTML = `<div class="reminder-bar"><span>🔔 今天：${events.map(e => e.text).join('、')}</span></div>`;
+            else container.innerHTML = '';
+        }
+
+        function renderAll() {
+            if (!currentUser) return showLogin();
+            
+            const role = state.currentRole;
+            const accountName = role === 'girl' ? state.accounts.girl : state.accounts.boy;
+            document.getElementById('role-name').innerText = accountName;
+            animateScore(state.scores[role]); renderCalendar(); renderSpace();
+
+            const myRequests = state.requests.filter(r => r.targetRole === role);
+            const reqSection = document.getElementById('request-section');
+            if (myRequests.length > 0) {
+                reqSection.style.display = 'block';
+                document.getElementById('request-list').innerHTML = myRequests.map(req => {
+                    const requesterName = req.requester === 'girl' ? state.accounts.girl : state.accounts.boy;
+                    return `
+                    <div class="card request-card">
+                        <div class="card-info">
+                            <h3>${req.name}</h3><p>${requesterName} 申请${req.type === 'wishlist_apply' ? '发布愿望' : (req.type === 'task' ? '完成任务' : '兑换愿望')}</p>
+                            ${req.desc ? `<div class="card-desc">${req.desc}</div>` : ''}
+                            ${req.image ? `<img src="${req.image}" class="evidence-preview" onclick="window.open(this.src)">` : ''}
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                            <span class="points-tag">${req.type === 'task' ? '+' : '-'}${req.points}</span>
+                            <div style="display: flex; gap: 8px;"><button class="action-btn reject-btn" onclick="rejectRequest(${req.id})">不准</button><button class="action-btn" onclick="${req.type === 'wishlist_apply' ? `approveWishlistApply(${req.id})` : `approveRequest(${req.id})`}">准了</button></div>
+                        </div>
+                    </div>
+                `}).join('');
+            } else reqSection.style.display = 'none';
+
+            const myPendingRequests = state.requests.filter(r => r.requester === role);
+            const myReqSection = document.getElementById('my-request-section');
+            if (myPendingRequests.length > 0) {
+                myReqSection.style.display = 'block';
+                document.getElementById('my-request-list').innerHTML = myPendingRequests.map(req => `<div class="card request-card" style="opacity: 0.9;"><div class="card-info"><h3>${req.name}</h3><p>等待审批中...</p></div><button class="secondary-btn" onclick="deleteRequest(${req.id})">撤销</button></div>`).join('');
+            } else myReqSection.style.display = 'none';
+
+            document.getElementById('wishlist-list').innerHTML = (state.wishlist || []).map(item => `<div class="card"><div class="card-info"><h3>${item.name}</h3><p>建议积分: ${item.points}</p></div><div style="display: flex; gap: 8px;">${item.targetRole === role ? `<button class="action-btn" onclick="approveWishlistItem(${item.id})">采纳</button>` : `<button class="secondary-btn delete-btn" onclick="deleteWishlistItem(${item.id})">×</button>`}</div></div>`).join('') || '<div style="opacity:0.3;text-align:center;padding:10px;">暂无计划</div>';
+            document.getElementById('task-list').innerHTML = state.tasks.map(task => `<div class="card"><div class="card-info"><h3>${task.name}</h3><p>+${task.points}</p></div>${task.creator !== role ? `<button class="action-btn" onclick="openModal('task_apply', ${task.id})">申请完成</button>` : `<button class="secondary-btn delete-btn" onclick="deleteItem('task', ${task.id})">×</button>`}</div>`).join('');
+            document.getElementById('wish-list').innerHTML = state.wishes.map(wish => `<div class="card"><div class="card-info"><h3>${wish.name}</h3><p>-${wish.points}</p></div>${wish.creator !== role ? `<button class="action-btn" onclick="confirmRedeemWish(${wish.id})">申请兑换</button>` : `<button class="secondary-btn delete-btn" onclick="deleteItem('wish', ${wish.id})">×</button>`}</div>`).join('');
+            document.getElementById('history-list').innerHTML = state.history.slice().reverse().map(h => `<div class="history-item"><span>${h.text}</span><span style="opacity:0.4;">${h.time}</span></div>`).join('') || '<div style="opacity:0.5;text-align:center;padding:10px;">暂无记录</div>';
+        }
+
+        function renderSpace() {
+            if (!state.posts) state.posts = [];
+            const list = document.getElementById('space-list');
+            list.innerHTML = state.posts.slice().reverse().map(post => {
+                const authorName = post.role === 'girl' ? state.accounts.girl : state.accounts.boy;
+                return `
+                <div class="post-card">
+                    <div class="post-header">
+                        <div class="post-avatar">${post.role === 'girl' ? '👩' : '👨'}</div>
+                        <div class="post-meta">
+                            <div class="post-author">${authorName}</div>
+                            <div class="post-time">${post.time}</div>
+                        </div>
+                        <button class="secondary-btn delete-btn" onclick="deletePost(${post.id})">×</button>
+                    </div>
+                    <div class="post-content">${post.content}</div>
+                    ${post.image ? `<img src="${post.image}" class="post-image" onclick="window.open(this.src)">` : ''}
+                    ${post.location ? `<div class="post-location">📍 ${post.location}</div>` : ''}
+                    
+                    <div class="comment-section">
+                        ${(post.comments || []).map((comment, cIdx) => {
+                            const commentAuthor = comment.role === 'girl' ? state.accounts.girl : state.accounts.boy;
+                            return `
+                            <div class="comment-item">
+                                <span class="comment-author">${commentAuthor}:</span>
+                                <span class="comment-content">${comment.text}</span>
+                                <span class="reply-btn" onclick="showReplyInput(${post.id}, ${cIdx})">回复</span>
+                                ${(comment.replies || []).map(reply => {
+                                    const replyAuthor = reply.role === 'girl' ? state.accounts.girl : state.accounts.boy;
+                                    return `
+                                    <div class="reply-item">
+                                        <span class="comment-author">${replyAuthor}</span>
+                                        <span style="opacity:0.6;">回复</span>
+                                        <span class="comment-author">${commentAuthor}:</span>
+                                        <span class="comment-content">${reply.text}</span>
+                                    </div>
+                                    `}).join('')}
+                            </div>
+                        `}).join('')}
+                        <div class="comment-input-group">
+                            <input type="text" placeholder="说点什么..." id="comment-input-${post.id}" onkeyup="if(event.keyCode==13) addComment(${post.id})">
+                            <button class="action-btn" style="padding: 4px 12px; font-size: 0.8rem;" onclick="addComment(${post.id})">评论</button>
+                        </div>
+                    </div>
+                </div>
+            `}).join('') || '<div style="opacity:0.3;text-align:center;padding:40px;">在这里记录属于你们的时刻吧...</div>';
+        }
+
+        function deletePost(id) {
+            if (confirm('确定删除这条动态吗？')) {
+                state.posts = state.posts.filter(p => p.id !== id);
+                renderAll(); saveData();
+            }
+        }
+
+        function addComment(postId) {
+            const input = document.getElementById(`comment-input-${postId}`);
+            const text = input.value.trim();
+            if (!text) return;
+            const post = state.posts.find(p => p.id === postId);
+            if (!post.comments) post.comments = [];
+            post.comments.push({ role: state.currentRole, text, time: new Date().toLocaleString(), replies: [] });
+            input.value = '';
+            renderAll(); saveData();
+        }
+
+        function showReplyInput(postId, commentIdx) {
+            const text = prompt('回复评论:');
+            if (!text) return;
+            const post = state.posts.find(p => p.id === postId);
+            if (!post.comments[commentIdx].replies) post.comments[commentIdx].replies = [];
+            post.comments[commentIdx].replies.push({ role: state.currentRole, text, time: new Date().toLocaleString() });
+            renderAll(); saveData();
+        }
+
+        function animateScore(target) {
+            const el = document.getElementById('current-score'); const start = parseInt(el.innerText) || 0;
+            const duration = 500; const startTime = performance.now();
+            function update(now) { const progress = Math.min((now - startTime) / duration, 1); el.innerText = Math.floor(start + (target - start) * progress); if (progress < 1) requestAnimationFrame(update); }
+            requestAnimationFrame(update);
+        }
+
+        function addHistory(text) { const now = new Date(); const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`; state.history.push({ id: Date.now(), text, time: timeStr }); if (state.history.length > 50) state.history.shift(); }
+        function closeModal() { 
+            document.getElementById('modal-overlay').style.display = 'none'; 
+            // 恢复默认的确认按钮文字
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            if (confirmBtn) confirmBtn.innerText = '确认';
+        }
+        function openResetModal() { currentModalType = 'reset'; document.getElementById('modal-title').innerText = '重置确认'; document.getElementById('modal-label-1').innerText = '重置密码'; document.getElementById('input-name').type = 'password'; document.getElementById('points-group').style.display = 'none'; document.getElementById('desc-group').style.display = 'none'; document.getElementById('modal-form').style.display = 'block'; document.getElementById('day-detail').style.display = 'none'; document.getElementById('modal-overlay').style.display = 'flex'; }
+        function openModal(type, id = null) {
+            currentModalType = type; editingId = id;
+            document.getElementById('modal-form').style.display = 'block';
+            document.getElementById('day-detail').style.display = 'none';
+            document.getElementById('modal-confirm-btn').style.display = 'block';
+            document.getElementById('modal-title').innerText = type;
+            
+            // Reset fields
+            document.getElementById('points-group').style.display = 'block';
+            document.getElementById('desc-group').style.display = 'block';
+            document.getElementById('evidence-group').style.display = 'none';
+            document.getElementById('input-name').type = 'text';
+            document.getElementById('input-name').value = '';
+            document.getElementById('input-points').value = '';
+            document.getElementById('input-desc').value = '';
+            document.getElementById('location-display').innerText = '';
+
+            if (type === 'space_post') {
+                document.getElementById('modal-title').innerText = '发布动态';
+                document.getElementById('modal-label-1').innerText = '标题 (选填)';
+                document.getElementById('modal-label-3').innerText = '此时此刻的想法...';
+                document.getElementById('points-group').style.display = 'none';
+                document.getElementById('evidence-group').style.display = 'block';
+                document.getElementById('file-label').innerText = '配张美照';
+                
+                // Try to get location
+                if (navigator.geolocation) {
+                    document.getElementById('location-display').innerText = '正在获取位置...';
+                    navigator.geolocation.getCurrentPosition(pos => {
+                        const lat = pos.coords.latitude.toFixed(2);
+                        const lng = pos.coords.longitude.toFixed(2);
+                        document.getElementById('location-display').innerText = `经纬度: ${lat}, ${lng} (模拟位置)`;
+                    }, () => {
+                        document.getElementById('location-display').innerText = '无法获取精确位置，请手动输入或留空';
+                    });
+                }
+            } else if (type === 'task_apply') {
+                document.getElementById('points-group').style.display = 'none';
+                document.getElementById('evidence-group').style.display = 'block';
+            }
+            
+            document.getElementById('modal-overlay').style.display = 'flex';
+        }
+        function changeMonth(step) { viewDate.setMonth(viewDate.getMonth() + step); renderCalendar(); }
+        function approveRequest(id) { const idx = state.requests.findIndex(r => r.id === id); const req = state.requests[idx]; if (req.type === 'wish') state.scores[req.requester] -= req.points; else state.scores[req.requester] += req.points; state.requests.splice(idx, 1); renderAll(); saveData(); }
+        function approveWishlistApply(id) { const idx = state.requests.findIndex(r => r.id === id); const req = state.requests[idx]; state.wishlist.push({ ...req, id: Date.now() }); state.requests.splice(idx, 1); renderAll(); saveData(); }
+        function approveWishlistItem(id) { const idx = state.wishlist.findIndex(i => i.id === id); const item = state.wishlist[idx]; state.wishes.push({ ...item, id: Date.now(), creator: state.currentRole }); state.wishlist.splice(idx, 1); renderAll(); saveData(); }
+        function rejectRequest(id) { state.requests.splice(state.requests.findIndex(r => r.id === id), 1); renderAll(); saveData(); }
+        function deleteRequest(id) { state.requests.splice(state.requests.findIndex(r => r.id === id), 1); renderAll(); saveData(); }
+        function deleteItem(t, id) { const l = t === 'task' ? state.tasks : state.wishes; l.splice(l.findIndex(i => i.id === id), 1); renderAll(); saveData(); }
+        function deleteWishlistItem(id) { state.wishlist.splice(state.wishlist.findIndex(i => i.id === id), 1); renderAll(); saveData(); }
+        function confirmRedeemWish(id) { const wish = state.wishes.find(w => w.id === id); if (state.scores[state.currentRole] < wish.points) return alert('积分不足'); state.requests.push({ id: Date.now(), type: 'wish', name: wish.name, points: wish.points, requester: state.currentRole, targetRole: state.currentRole === 'girl' ? 'boy' : 'girl' }); renderAll(); saveData(); }
+
+        const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d'); let particles = [];
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize); resize();
+        class Particle { constructor() { this.x = canvas.width / 2; this.y = canvas.height / 2; this.size = Math.random() * 15 + 10; this.speedX = Math.random() * 6 - 3; this.speedY = Math.random() * -10 - 2; this.opacity = 1; this.color = state.currentRole === 'girl' ? '#d5a4a9' : '#9ba4b4'; } update() { this.x += this.speedX; this.y += this.speedY; this.speedY += 0.2; this.opacity -= 0.02; } draw() { ctx.globalAlpha = this.opacity; ctx.fillStyle = this.color; ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.bezierCurveTo(this.x - this.size/2, this.y - this.size/2, this.x - this.size, this.y + this.size/3, this.x, this.y + this.size); ctx.bezierCurveTo(this.x + this.size, this.y + this.size/3, this.x + this.size/2, this.y - this.size/2, this.x, this.y); ctx.fill(); } }
+        function createHeartEffect() { for (let i = 0; i < 20; i++) particles.push(new Particle()); }
+        function animateParticles() { ctx.clearRect(0, 0, canvas.width, canvas.height); particles = particles.filter(p => { p.update(); p.draw(); return p.opacity > 0; }); requestAnimationFrame(animateParticles); }
+        animateParticles(); loadData();
+    </script>
+</body>
+</html>
