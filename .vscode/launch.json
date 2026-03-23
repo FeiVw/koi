@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "在浏览器中预览主页",
+            "request": "launch",
+            "type": "msedge",
+            "file": "${workspaceFolder}/love_token.html"
+        },
+        {
+            "name": "在浏览器中预览参考手册",
+            "request": "launch",
+            "type": "msedge",
+            "file": "${workspaceFolder}/wishlist_reference.html"
+        }
+    ]
+}

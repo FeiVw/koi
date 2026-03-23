@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生日快乐 - 纪念</title>
+    <style>
+        body { margin: 0; padding: 0; height: 100vh; background: #fff5f8; display: flex; align-items: center; justify-content: center; font-family: sans-serif; overflow: hidden; }
+        .cake { font-size: 8rem; animation: jump 1.5s infinite; text-align: center; }
+        @keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
+        .content { text-align: center; background: white; padding: 50px; border-radius: 40px; box-shadow: 0 15px 40px rgba(255,182,193,0.4); }
+        h1 { color: #ff69b4; font-size: 2.5rem; margin: 20px 0; }
+        p { color: #db7093; font-size: 1.1rem; }
+        .confetti { position: absolute; width: 10px; height: 10px; background: #ff69b4; animation: fall 3s linear infinite; }
+        @keyframes fall { to { transform: translateY(100vh) rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <div class="cake">🎂</div>
+        <h1>HAPPY BIRTHDAY</h1>
+        <p>愿你岁岁平安，<br>所有的愿望都能在这个特别的日子成真。</p>
+    </div>
+    <script>
+        for(let i=0; i<50; i++) {
+            let div = document.createElement('div');
+            div.className = 'confetti';
+            div.style.left = Math.random() * 100 + 'vw';
+            div.style.animationDelay = Math.random() * 3 + 's';
+            div.style.backgroundColor = ['#ff69b4','#ffd700','#87cefa','#98fb98'][Math.floor(Math.random()*4)];
+            document.body.appendChild(div);
+        }
+    </script>
+</body>
+</html>

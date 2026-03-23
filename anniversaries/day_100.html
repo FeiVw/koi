@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遇见你 100 天 - 纪念</title>
+    <style>
+        :root {
+            --pink-light: #fbeef0;
+            --pink-primary: #d5a4a9;
+            --pink-dark: #8c6a6d;
+        }
+        body {
+            margin: 0; padding: 0; min-height: 100vh;
+            background: linear-gradient(135deg, #fdfcfb 0%, #e2d1c3 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-family: 'Segoe UI', Roboto, sans-serif; color: var(--pink-dark);
+            overflow: hidden;
+        }
+        .container {
+            text-align: center; background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px); padding: 50px; border-radius: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1); border: 2px solid white;
+            animation: float 4s ease-in-out infinite; max-width: 80%;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        h1 { font-size: 4rem; margin: 0; color: var(--pink-primary); text-shadow: 2px 2px 4px rgba(0,0,0,0.05); }
+        p { font-size: 1.2rem; margin-top: 20px; line-height: 1.6; }
+        .heart { font-size: 5rem; color: #ff4d4f; animation: pulse 1s infinite; }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            14% { transform: scale(1.1); }
+            28% { transform: scale(1); }
+            42% { transform: scale(1.1); }
+            70% { transform: scale(1); }
+        }
+        .days { font-weight: 800; color: var(--pink-primary); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="heart">❤</div>
+        <h1>100 DAYS</h1>
+        <p>从相遇的那一刻起，<br>我们的心跳已经同步了 <span class="days">100</span> 天。</p>
+        <p style="font-style: italic; opacity: 0.7;">— 百日之约，长久之始 —</p>
+    </div>
+</body>
+</html>

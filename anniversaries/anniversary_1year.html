@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一周年快乐 - 纪念</title>
+    <style>
+        body {
+            margin: 0; padding: 0; height: 100vh;
+            background: #000; overflow: hidden;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #fff; font-family: 'STKaiti', serif;
+        }
+        .stars { position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: 0; }
+        .content {
+            z-index: 1; text-align: center; padding: 40px;
+            border: 1px solid rgba(255,255,255,0.3); border-radius: 20px;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+        }
+        h1 { font-size: 3.5rem; color: #ffd700; margin-bottom: 20px; }
+        p { font-size: 1.5rem; line-height: 2; letter-spacing: 2px; }
+        .gold { color: #ffd700; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <canvas id="stars" class="stars"></canvas>
+    <div class="content">
+        <h1>1ST ANNIVERSARY</h1>
+        <p>春去秋来，四季流转</p>
+        <p>我们共同度过了第一个 <span class="gold">365</span> 天</p>
+        <p>愿往后余生，岁岁常相见，年年有今日</p>
+    </div>
+    <script>
+        const canvas = document.getElementById('stars');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const stars = [];
+        for(let i=0; i<200; i++){
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 2,
+                opacity: Math.random()
+            });
+        }
+        function draw(){
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            stars.forEach(s => {
+                ctx.fillStyle = `rgba(255,255,255,${s.opacity})`;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.size, 0, Math.PI*2);
+                ctx.fill();
+                s.opacity += (Math.random()-0.5) * 0.05;
+                if(s.opacity < 0) s.opacity = 0;
+                if(s.opacity > 1) s.opacity = 1;
+            });
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>

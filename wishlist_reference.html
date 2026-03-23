@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>心愿单系统参考手册</title>
+    <style>
+        :root {
+            --pink-primary: #d5a4a9;
+            --pink-bg: #f5e6e8;
+            --blue-primary: #9ba4b4;
+            --blue-bg: #e1e5ea;
+            --white: #ffffff;
+            --text-main: #5a5a5a;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            --radius: 20px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--pink-bg) 0%, var(--blue-bg) 100%);
+            color: var(--text-main);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 40px 20px;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: var(--pink-primary);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        /* 选项卡 */
+        .tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 5px;
+            border-radius: 50px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: 600;
+            color: #888;
+            transition: all 0.3s;
+            border-radius: 50px;
+        }
+
+        .tab-btn.active {
+            background: var(--white);
+            color: var(--pink-primary);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        /* 内容区域 */
+        .content-section {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .level-group {
+            margin-bottom: 30px;
+        }
+
+        .level-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding-left: 10px;
+            border-left: 4px solid var(--pink-primary);
+        }
+
+        .level-title {
+            font-weight: 800;
+            font-size: 1.2rem;
+        }
+
+        .level-tag {
+            background: var(--pink-primary);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 50px;
+            font-size: 0.75rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 15px;
+        }
+
+        .card {
+            background: var(--white);
+            padding: 18px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            transition: transform 0.3s;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .card-name {
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+
+        .card-points {
+            font-weight: 800;
+            color: var(--pink-primary);
+            font-size: 1.1rem;
+        }
+
+        .card-desc {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        /* 机制说明 */
+        .mechanism-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .mechanism-item {
+            background: rgba(255, 255, 255, 0.6);
+            padding: 20px;
+            border-radius: var(--radius);
+            border: 1px dashed var(--pink-primary);
+        }
+
+        .mechanism-item h3 {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 30px;
+            font-size: 0.8rem;
+            opacity: 0.5;
+        }
+
+        .bottom-line {
+            background: #fff3f3;
+            color: #ff4d4f;
+            padding: 15px;
+            border-radius: 15px;
+            margin-top: 20px;
+            font-weight: 600;
+            text-align: center;
+            border: 1px solid #ffcccc;
+        }
+
+        .back-home {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--pink-primary);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 50px;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-weight: 700;
+            z-index: 100;
+            transition: transform 0.3s;
+        }
+
+        .back-home:hover { transform: scale(1.1); }
+
+        @media (max-width: 480px) {
+            .grid { grid-template-columns: 1fr; }
+            h1 { font-size: 1.5rem; }
+            .back-home { bottom: 20px; right: 20px; padding: 10px 15px; font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+
+<a href="love_token.html" class="back-home">🏠 返回主页</a>
+
+<div class="container">
+    <header>
+        <h1>💖 亲密关系积分系统</h1>
+        <p class="subtitle">让爱在点滴互动中升温，记录每一份温柔付出</p>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('tasks')">任务体系</button>
+        <button class="tab-btn" onclick="showTab('wishes')">心愿兑换</button>
+        <button class="tab-btn" onclick="showTab('rules')">运行规则</button>
+    </div>
+
+    <!-- 任务体系 -->
+    <section id="tasks" class="content-section active">
+        <!-- L1 -->
+        <div class="level-group">
+            <div class="level-header">
+                <span class="level-title">L1 级：举手之劳</span>
+                <span class="level-tag">5-20 分钟</span>
+            </div>
+            <div class="grid">
+                <div class="card"><div class="card-header"><span class="card-name">取快递 / 外卖</span><span class="card-points">+1</span></div><p class="card-desc">替对方跑个腿</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">拿东西 / 倒水</span><span class="card-points">+1</span></div><p class="card-desc">细心的即时照顾</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">提醒重要事项</span><span class="card-points">+1</span></div><p class="card-desc">做对方的人间闹钟</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">查找信息</span><span class="card-points">+2</span></div><p class="card-desc">帮忙搜攻略、查资料</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">帮买小件物品</span><span class="card-points">+2</span></div><p class="card-desc">顺路带回的心意</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">收叠衣服</span><span class="card-points">+2</span></div><p class="card-desc">分担日常琐碎家务</p></div>
+            </div>
+        </div>
+
+        <!-- L2 -->
+        <div class="level-group">
+            <div class="level-header">
+                <span class="level-title">L2 级：日常互动</span>
+                <span class="level-tag">30分钟 - 1小时</span>
+            </div>
+            <div class="grid">
+                <div class="card"><div class="card-header"><span class="card-name">陪散步 / 逛超市</span><span class="card-points">+5</span></div><p class="card-desc">享受平淡生活的温馨</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">做饭（打下手）</span><span class="card-points">+5</span></div><p class="card-desc">洗菜、切菜的协作</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">一起看电影</span><span class="card-points">+5</span></div><p class="card-desc">共度一段沉浸时光</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">陪伴逛街 / 购物</span><span class="card-points">+8</span></div><p class="card-desc">耐心是最好的礼物</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">搬家 / 整理房间</span><span class="card-points">+10</span></div><p class="card-desc">体力与精力的双重付出</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">辅导 / 解答问题</span><span class="card-points">+8</span></div><p class="card-desc">智慧的相互支持</p></div>
+            </div>
+        </div>
+
+        <!-- L3 -->
+        <div class="level-group">
+            <div class="level-header">
+                <span class="level-title">L3 级：深度协作</span>
+                <span class="level-tag">1-3 小时</span>
+            </div>
+            <div class="grid">
+                <div class="card"><div class="card-header"><span class="card-name">做饭（主厨）</span><span class="card-points">+15</span></div><p class="card-desc">精心准备一桌美食</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">陪伴看病 / 办事</span><span class="card-points">+15</span></div><p class="card-desc">关键时刻的守护</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">策划约会惊喜</span><span class="card-points">+20</span></div><p class="card-desc">浪漫需要用心的经营</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">共同健身 / 运动</span><span class="card-points">+15</span></div><p class="card-desc">一起变好，变强壮</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">长途出行接送</span><span class="card-points">+20</span></div><p class="card-desc">路途遥远但心很近</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">协助重要项目</span><span class="card-points">+25</span></div><p class="card-desc">事业学业上的强力助攻</p></div>
+            </div>
+        </div>
+
+        <!-- L4 -->
+        <div class="level-group">
+            <div class="level-header">
+                <span class="level-title">L4 级：重大挑战</span>
+                <span class="level-tag">半天以上 / 重大意义</span>
+            </div>
+            <div class="grid">
+                <div class="card"><div class="card-header"><span class="card-name">短途旅行（1-2天）</span><span class="card-points">+50</span></div><p class="card-desc">去陌生的城市制造回忆</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">陪伴应对重大事件</span><span class="card-points">+50</span></div><p class="card-desc">风雨同舟的坚定</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">合作完成论文/项目</span><span class="card-points">+80</span></div><p class="card-desc">共同攻克人生大关</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">深度情感沟通</span><span class="card-points">+30</span></div><p class="card-desc">灵魂深处的交流 (2h+)</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">跨城/跨国陪伴</span><span class="card-points">+70</span></div><p class="card-desc">距离也无法阻隔的爱</p></div>
+                <div class="card"><div class="card-header"><span class="card-name">克服重大困难</span><span class="card-points">+100</span></div><p class="card-desc">共同面对生活的挑战</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 心愿兑换 -->
+    <section id="wishes" class="content-section">
+        <div class="level-group">
+            <div class="level-header">
+                <span class="level-title">🌱 初级心愿</span>
+                <span class="level-tag">容易实现的快乐</span>
+            </div>
+            <div class="grid">
+                <div class="card"><div class="card-header"><span class="card-name">奶茶 / 咖啡一杯</span><span class="card-points">5分</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">小零食 / 甜点</span><span class="card-points">5分</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">按摩 15 分钟</span><span class="card-points">8分</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">专属夸夸券(5句)</span><span class="card-points">3分</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">免做一次家务</span><span class="card-points">10分</span></div></div>
+            </div>
+        </div>
+
+        <div class="level-group" style="margin-top: 40px;">
+            <div class="level-header">
+                <span class="level-title">⭐ 中级心愿</span>
+                <span class="level-tag">精心准备的时光</span>
+            </div>
+            <div class="grid">
+                <div class="card"><div class="card-header"><span class="card-name">约会（看山/逛街/探店）</span><span class="card-points">30分</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">专属陪伴(1h无手机)</span><span class="card-points">25分</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">亲手做一顿饭</span><span class="card-points">35分</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">电影日（家/影院）</span><span class="card-points">25分</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">周末近郊出游</span><span class="card-points">50分</span></div></div>
+            </div>
+        </div>
+
+        <div class="level-group" style="margin-top: 40px;">
+            <div class="level-header">
+                <span class="level-title">👑 高级心愿</span>
+                <span class="level-tag">珍贵的梦想时刻</span>
+            </div>
+            <div class="grid">
+                <div class="card"><div class="card-header"><span class="card-name">说走就走的短途旅行</span><span class="card-points">100分</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">对方出资请大餐</span><span class="card-points">50分</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">赠送心仪小礼物</span><span class="card-points">视价值</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">全天高质量陪伴日</span><span class="card-points">80分</span></div></div>
+                <div class="card"><div class="card-header"><span class="card-name">实现一个小梦想</span><span class="card-points">120分</span></div></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 运行规则 -->
+    <section id="rules" class="content-section">
+        <div class="mechanism-list">
+            <div class="mechanism-item">
+                <h3>📈 通胀控制机制</h3>
+                <p>• <b>月度上限：</b>每月最高积 100 分，超过部分自动清零，避免过度竞争。</p>
+                <p>• <b>季度清零：</b>每季末建议清零兑换心愿，或最多 50% 结转下季。</p>
+                <p>• <b>任务冷却：</b>同类任务每周最多发布 3 次。</p>
+            </div>
+            <div class="mechanism-item">
+                <h3>⚖️ 汇率参考</h3>
+                <p>1 积分 ≈ 5-10 元的价值感。这不仅是积分，更是对对方付出的尊重与量化。</p>
+            </div>
+            <div class="mechanism-item">
+                <h3>🤝 实施建议</h3>
+                <p>• 每月底讨论一次规则是否合理，及时根据生活状态调整分值。</p>
+                <p>• 可以在“爱的储蓄罐”中设置自定义纪念日，增加仪式感。</p>
+            </div>
+        </div>
+        <div class="bottom-line">
+            ❤️ 底线原则：日常关心不能完全依赖积分驱动，请保持自发的情感表达。
+        </div>
+    </section>
+
+    <footer>
+        <p>Based on System Design v1.0</p>
+        <p>© 你们的甜蜜空间</p>
+    </footer>
+</div>
+
+<script>
+    function showTab(tabId) {
+        // 切换按钮状态
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+            const btnText = btn.innerText;
+            if((tabId === 'tasks' && btnText.includes('任务')) || 
+               (tabId === 'wishes' && btnText.includes('心愿')) || 
+               (tabId === 'rules' && btnText.includes('规则'))) {
+                btn.classList.add('active');
+            }
+        });
+        // 切换内容显示
+        document.querySelectorAll('.content-section').forEach(sec => {
+            sec.classList.remove('active');
+        });
+        document.getElementById(tabId).classList.add('active');
+    }
+</script>
+
+</body>
+</html>
