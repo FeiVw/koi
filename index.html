@@ -125,8 +125,8 @@
         @keyframes pulse { 0% { opacity: 0.9; } 50% { opacity: 1; transform: scale(1.01); } 100% { opacity: 0.9; } }
 
         /* 弹窗系统 */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 1000; }
-        .modal { background: var(--white); width: 90%; max-width: 450px; padding: 30px; border-radius: 25px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2); max-height: 90vh; overflow-y: auto; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: flex-start; z-index: 1000; overflow-y: auto; padding: 20px 0; }
+        .modal { background: var(--white); width: 90%; max-width: 450px; padding: 30px; border-radius: 25px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2); margin: auto; }
         .modal h2 { margin-bottom: 20px; }
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; font-size: 0.9rem; margin-bottom: 8px; opacity: 0.8; }
@@ -138,8 +138,8 @@
         .cancel-btn { background: #eee; }
         .confirm-btn { background: var(--theme-primary); color: white; }
 
-        #setup-overlay, #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--theme-bg); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; }
-        .setup-card, .login-card { background: var(--white); width: 90%; max-width: 400px; padding: 40px; border-radius: 30px; box-shadow: var(--shadow); text-align: center; }
+        #setup-overlay, #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--theme-bg); display: none; flex-direction: column; align-items: center; z-index: 2000; overflow-y: auto; padding: 40px 0; }
+        .setup-card, .login-card { background: var(--white); width: 90%; max-width: 400px; padding: 40px; border-radius: 30px; box-shadow: var(--shadow); text-align: center; margin: auto; }
         
         .logout-btn { position: absolute; right: 20px; top: 20px; padding: 6px 12px; font-size: 0.75rem; border: 1px solid #ff4d4f; color: #ff4d4f; background: transparent; border-radius: 50px; cursor: pointer; }
         
@@ -196,8 +196,16 @@
             </div>
 
             <div class="input-group">
-                <label>账号名称</label>
-                <input type="text" id="setup-name" placeholder="设置你的昵称">
+                <label>账号名称 (用于登录)</label>
+                <input type="text" id="setup-account" placeholder="设置你的登录 ID">
+            </div>
+            <div class="input-group">
+                <label>专属昵称 (主页展示)</label>
+                <input type="text" id="setup-nickname" placeholder="想被对方怎么称呼？">
+            </div>
+            <div class="input-group">
+                <label>生日 (有签到奖励哦)</label>
+                <input type="date" id="setup-birthday">
             </div>
             <div class="input-group">
                 <label>设置密码</label>
@@ -237,7 +245,7 @@
             <button class="role-btn" onclick="switchRole('boy')">男生</button>
         </div>
         <div class="score-container">
-            <p class="score-label"><span id="role-name">小主</span> 的当前积分</p>
+            <p class="score-label" onclick="editNickname()" style="cursor: pointer; text-decoration: underline dashed 1px; text-underline-offset: 4px;"><span id="role-nickname">小主</span> 的当前积分 ✎</p>
             <div class="score-value" id="current-score">0</div>
             <button id="checkin-btn" class="checkin-btn" onclick="handleCheckIn()">✨ 每日签到</button>
         </div>
@@ -314,7 +322,7 @@
         </section>
 
         <footer class="system-footer">
-            <p style="font-size: 0.8rem; opacity: 0.4;">爱的储蓄罐 v10.0</p>
+            <p style="font-size: 0.8rem; opacity: 0.4;">爱的储蓄罐 v11.0</p>
             <button class="reset-trigger" onclick="openResetModal()">⚠️ 重置系统数据</button>
         </footer>
     </main>
@@ -365,15 +373,17 @@
         const HOLIDAYS = { "0101": "元旦", "0214": "情人节", "0501": "劳动节", "0504": "青年节", "0520": "520告白日", "0601": "儿童节", "1001": "国庆节", "1225": "圣诞节" };
         const ANNIVERSARY_DAYS = [30, 50, 100, 520, 666, 888, 1314];
 
-        const STORAGE_KEY = 'love_token_data_v10';
+        const STORAGE_KEY = 'love_token_data_v11';
         let state = {
             currentRole: 'girl', scores: { girl: 0, boy: 0 },
-            accounts: { girl: null, boy: null },
+            accounts: { girl: null, boy: null }, // 账号 ID
+            nicknames: { girl: null, boy: null }, // 昵称
             passwords: { girl: null, boy: null },
             questions: { girl: null, boy: null },
             answers: { girl: null, boy: null },
+            birthdays: { girl: null, boy: null }, // 生日
             tasks: [], wishes: [], wishlist: [], requests: [], history: [],
-            startDate: new Date().toISOString(),
+            startDate: formatLocalDate(new Date()),
             checkIns: {}, userEvents: {}, userNotes: {},
             posts: []
         };
@@ -384,23 +394,33 @@
         let editingDate = null;
 
         function formatLocalDate(date) {
-            const y = date.getFullYear();
-            const m = String(date.getMonth() + 1).padStart(2, '0');
-            const d = String(date.getDate()).padStart(2, '0');
+            // 如果是 YYYY-MM-DD 字符串，直接返回，避免 timezone 转换
+            if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+            
+            const targetDate = (date instanceof Date) ? date : new Date(date);
+            
+            // 转换为东 8 区 (UTC+8) 时间显示
+            const utc = targetDate.getTime() + (targetDate.getTimezoneOffset() * 60000);
+            const d8 = new Date(utc + (3600000 * 8));
+            
+            const y = d8.getFullYear();
+            const m = String(d8.getMonth() + 1).padStart(2, '0');
+            const d = String(d8.getDate()).padStart(2, '0');
             return `${y}-${m}-${d}`;
         }
 
         function loadData() {
             let saved = localStorage.getItem(STORAGE_KEY);
             
-            // 尝试从 v9 迁移
+            // 尝试从 v10 迁移
             if (!saved) {
-                const oldSaved = localStorage.getItem('love_token_data_v9');
+                const oldSaved = localStorage.getItem('love_token_data_v10');
                 if (oldSaved) {
                     const oldState = JSON.parse(oldSaved);
                     state = { ...state, ...oldState };
-                    if (!state.questions) state.questions = { girl: null, boy: null };
-                    if (!state.answers) state.answers = { girl: null, boy: null };
+                    // 迁移：将旧的 accounts 既作为账号也作为初始昵称
+                    if (!state.nicknames) state.nicknames = { ...state.accounts };
+                    if (!state.birthdays) state.birthdays = { girl: null, boy: null };
                     saveData();
                     saved = localStorage.getItem(STORAGE_KEY);
                 }
@@ -499,6 +519,16 @@
             createHeartEffect();
         }
 
+        function editNickname() {
+            const newNick = prompt('输入你的新昵称:', state.nicknames[state.currentRole]);
+            if (newNick && newNick.trim()) {
+                state.nicknames[state.currentRole] = newNick.trim();
+                saveData();
+                renderAll();
+                createHeartEffect();
+            }
+        }
+
         function handleLogout() {
             currentUser = null;
             sessionStorage.removeItem('current_user');
@@ -518,7 +548,9 @@
 
         function handleRegister() {
             const role = document.querySelector('input[name="setup-role"]:checked').value;
-            const name = document.getElementById('setup-name').value.trim();
+            const account = document.getElementById('setup-account').value.trim();
+            const nickname = document.getElementById('setup-nickname').value.trim();
+            const birthday = document.getElementById('setup-birthday').value;
             const pw1 = document.getElementById('setup-pw1').value;
             const pw2 = document.getElementById('setup-pw2').value;
             
@@ -528,7 +560,9 @@
             }
             const answer = document.getElementById('setup-answer').value.trim();
 
-            if (!name) return alert('请输入账号名称');
+            if (!account) return alert('请输入登录账号');
+            if (!nickname) return alert('请输入你的专属昵称');
+            if (!birthday) return alert('请选择你的生日');
             if (!pw1 || pw1 !== pw2) return alert('请确保密码一致');
             if (!question) return alert('请选择或输入密保问题');
             if (!answer) return alert('请输入密保答案');
@@ -537,12 +571,20 @@
                 return alert('该身份已经注册过了，每个空间只能有一男一女哦');
             }
 
-            // 设置初始注册日期 (仅在第一个人注册时)
-            if (!state.passwords.girl && !state.passwords.boy) {
-                state.startDate = new Date().toISOString();
+            // 检查账号是否冲突
+            const otherRole = role === 'girl' ? 'boy' : 'girl';
+            if (state.accounts[otherRole] === account) {
+                return alert('该账号已被另一半占用，请换一个');
             }
 
-            state.accounts[role] = name;
+            // 设置初始注册日期 (仅在第一个人注册时)
+            if (!state.passwords.girl && !state.passwords.boy) {
+                state.startDate = formatLocalDate(new Date());
+            }
+
+            state.accounts[role] = account;
+            state.nicknames[role] = nickname;
+            state.birthdays[role] = birthday;
             state.passwords[role] = pw1;
             state.questions[role] = question;
             state.answers[role] = answer;
@@ -591,7 +633,9 @@
 
         function getSolarTerm(y, n) {
             const offDate = new Date((31556925974.7 * (y - 1900) + TERM_INFO[n] * 60000) + Date.UTC(1900, 0, 6, 2, 5));
-            return offDate.getUTCDate();
+            // 二十四节气需要基于北京时间 (UTC+8) 来确定哪一天
+            const d8 = new Date(offDate.getTime() + 8 * 3600000);
+            return d8.getUTCDate();
         }
 
         function getEventsForDate(date) {
@@ -603,6 +647,17 @@
             const y = date.getFullYear(), m = date.getMonth();
             if (date.getDate() === getSolarTerm(y, m * 2)) events.push({ type: 'system', text: `🍂 ${SOLAR_TERMS[m * 2]}` });
             if (date.getDate() === getSolarTerm(y, m * 2 + 1)) events.push({ type: 'system', text: `🍂 ${SOLAR_TERMS[m * 2 + 1]}` });
+
+            // 检查生日
+            if (state.birthdays) {
+                const mm_dd = `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                if (state.birthdays.girl && state.birthdays.girl.endsWith(mm_dd)) {
+                    events.push({ type: 'system', text: `🎂 女生生日快乐!` });
+                }
+                if (state.birthdays.boy && state.birthdays.boy.endsWith(mm_dd)) {
+                    events.push({ type: 'system', text: `🎂 男生生日快乐!` });
+                }
+            }
 
             const start = new Date(state.startDate); start.setHours(0,0,0,0);
             const diff = Math.floor((date - start) / (1000 * 60 * 60 * 24)) + 1;
@@ -696,8 +751,8 @@
             if (!state.checkIns[todayStr]) state.checkIns[todayStr] = [];
             state.checkIns[todayStr].push(state.currentRole);
             
-            const accountName = state.currentRole === 'girl' ? state.accounts.girl : state.accounts.boy;
-            addHistory(`${accountName} 签到成功，获得 ${points} 积分${isSpecial ? ' (纪念日奖励!)' : ''}`);
+            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            addHistory(`${nickname} 签到成功，获得 ${points} 积分${isSpecial ? ' (纪念日奖励!)' : ''}`);
             createHeartEffect(); renderAll(); saveData();
         }
 
@@ -723,7 +778,7 @@
             if (currentModalType === 'recovery_answer') {
                 const ans = document.getElementById('input-name').value.trim();
                 if (ans === state.answers[recoveryRole]) {
-                    alert(`找回成功！你的密码是: ${state.passwords[recoveryRole]}`);
+                    alert(`找回成功！你的账号是: ${state.accounts[recoveryRole]}，密码是: ${state.passwords[recoveryRole]}`);
                     closeModal();
                 } else {
                     alert('答案错误，请仔细回忆');
@@ -812,8 +867,8 @@
             if (!currentUser) return showLogin();
             
             const role = state.currentRole;
-            const accountName = role === 'girl' ? state.accounts.girl : state.accounts.boy;
-            document.getElementById('role-name').innerText = accountName;
+            const nickname = state.nicknames[role] || state.accounts[role];
+            document.getElementById('role-nickname').innerText = nickname;
             animateScore(state.scores[role]); renderCalendar(); renderSpace();
 
             const myRequests = state.requests.filter(r => r.targetRole === role);
@@ -821,7 +876,7 @@
             if (myRequests.length > 0) {
                 reqSection.style.display = 'block';
                 document.getElementById('request-list').innerHTML = myRequests.map(req => {
-                    const requesterName = req.requester === 'girl' ? state.accounts.girl : state.accounts.boy;
+                    const requesterName = state.nicknames[req.requester] || state.accounts[req.requester];
                     return `
                     <div class="card request-card">
                         <div class="card-info">
@@ -854,7 +909,7 @@
             if (!state.posts) state.posts = [];
             const list = document.getElementById('space-list');
             list.innerHTML = state.posts.slice().reverse().map(post => {
-                const authorName = post.role === 'girl' ? state.accounts.girl : state.accounts.boy;
+                const authorName = state.nicknames[post.role] || state.accounts[post.role];
                 return `
                 <div class="post-card">
                     <div class="post-header">
@@ -871,14 +926,14 @@
                     
                     <div class="comment-section">
                         ${(post.comments || []).map((comment, cIdx) => {
-                            const commentAuthor = comment.role === 'girl' ? state.accounts.girl : state.accounts.boy;
+                            const commentAuthor = state.nicknames[comment.role] || state.accounts[comment.role];
                             return `
                             <div class="comment-item">
                                 <span class="comment-author">${commentAuthor}:</span>
                                 <span class="comment-content">${comment.text}</span>
                                 <span class="reply-btn" onclick="showReplyInput(${post.id}, ${cIdx})">回复</span>
                                 ${(comment.replies || []).map(reply => {
-                                    const replyAuthor = reply.role === 'girl' ? state.accounts.girl : state.accounts.boy;
+                                    const replyAuthor = state.nicknames[reply.role] || state.accounts[reply.role];
                                     return `
                                     <div class="reply-item">
                                         <span class="comment-author">${replyAuthor}</span>
