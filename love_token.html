@@ -175,7 +175,7 @@
         #setup-overlay, #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--theme-bg); display: none; flex-direction: column; align-items: center; z-index: 2000; overflow-y: auto; padding: 40px 0; }
         
         /* 初始隐藏页面，防止加载闪现 */
-        body:not(.auth-ready) header, body:not(.auth-ready) main { display: none !important; }
+        body:not(.auth-ready) header, body:not(.auth-ready) main, body:not(.auth-ready) .floating-pet { display: none !important; }
 
         .setup-card, .login-card { 
             background: var(--white); width: 90%; max-width: 400px; 
@@ -197,22 +197,35 @@
             border-radius: 24px;
             margin-bottom: 30px;
             box-shadow: var(--shadow);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: var(--border-feather);
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+        .feature-box::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 24px;
+            pointer-events: none;
+            box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.4);
         }
 
         /* 小狗点击互动样式 */
+
         .dog-interaction {
-            background: rgba(255, 255, 255, 0.8);
+            background: transparent;
             padding: 5px 15px;
             border-radius: 30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            backdrop-filter: blur(5px);
+            box-shadow: none;
+            backdrop-filter: none;
             z-index: 1000;
-            border: 1px solid rgba(255,255,255,0.5);
+            border: none;
+            width: fit-content;
+            margin: 0;
         }
         .dog-img, .dog-block {
-            width: 64px;
-            height: 64px;
+            width: 84px;
+            height: 84px;
             cursor: pointer;
             transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             object-fit: contain;
@@ -222,9 +235,9 @@
             font-size: 2.4rem;
             border-radius: 12px;
             color: white;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(5px);
+            box-shadow: none;
+            border: none;
+            backdrop-filter: none;
         }
         .dog-block { background: var(--theme-primary); }
         .dog-img:active, .dog-block:active {
@@ -233,10 +246,35 @@
         .dog-img.animate, .dog-block.animate {
             animation: dog-bounce 0.4s ease;
         }
+        .pet-pair {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            flex-wrap: nowrap;
+            touch-action: none;
+        }
+        .floating-pet {
+            position: fixed;
+            z-index: 2147483000;
+            margin: 0;
+            user-select: none;
+            will-change: left, top, transform;
+        }
+        .pet-pair.animate {
+            animation: pair-bounce 0.4s ease;
+        }
         @keyframes dog-bounce {
             0% { transform: scale(1); }
             40% { transform: scale(0.8); }
             70% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        @keyframes pair-bounce {
+            0% { transform: scale(1); }
+            40% { transform: scale(0.9); }
+            70% { transform: scale(1.12); }
             100% { transform: scale(1); }
         }
         .click-count {
@@ -378,16 +416,17 @@
                 </div>
             </div>
 
-            <!-- 小狗点击互动模块（放在天气模块下方，且独立显示） -->
-            <div class="dog-interaction-container" style="margin: 20px auto; display: flex; justify-content: center; align-items: center; width: 100%;">
-                <div class="dog-interaction" style="display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.8); padding: 8px 20px; border-radius: 50px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.5);">
-                    <span class="click-count count-girl" id="dog-count-girl">0</span>
-                    <img src="fig/dog/小狗.png" class="dog-img" id="dog-trigger" onclick="handleDogClick()" alt="🐶">
-                    <span class="click-count count-boy" id="dog-count-boy">0</span>
-                </div>
+            <!-- 小狗点击互动模块占位（用于保持原始显示位置） -->
+            <div class="dog-interaction" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 20px auto 0; padding: 8px 20px; border-radius: 50px;">
+                <span class="click-count count-girl" id="dog-count-girl">0</span>
+                <div id="pet-origin-anchor" style="width: 184px; height: 96px;"></div>
+                <span class="click-count count-boy" id="dog-count-boy">0</span>
             </div>
         </div>
     </header>
+
+    <img src="fig/dog/小狗.png" class="dog-img floating-pet" id="dog-trigger" alt="🐶" draggable="false" onclick="handleDogClick(event, 'dog')">
+    <img src="fig/cat/小猫.png" class="dog-img floating-pet" id="cat-trigger" alt="🐱" draggable="false" onclick="handleDogClick(event, 'cat')">
 
     <main>
         <div id="reminder-container"></div>
@@ -542,8 +581,8 @@
         }
 
         let state = {
-            currentRole: 'girl', scores: { girl: 0, boy: 0 },
-            dogClicks: { girl: 0, boy: 0 }, // 小狗点击计数
+            scores: { girl: 0, boy: 0 },
+            dogClicks: { girl: 0, boy: 0 }, // 点击计数
             accounts: { girl: null, boy: null }, // 账号 ID
             nicknames: { girl: null, boy: null }, // 昵称
             passwords: { girl: null, boy: null },
@@ -557,7 +596,7 @@
             posts: []
         };
 
-        let currentUser = null; // 当前登录的用户
+        let currentUser = null; // 当前登录的用户 (girl 或 boy)
 
         let viewDate = new Date();
         let editingDate = null;
@@ -599,7 +638,6 @@
 
             if (sessionUser && hasRegisteredLocal) {
                 currentUser = sessionUser;
-                state.currentRole = currentUser;
                 document.body.className = `role-${currentUser}`;
                 renderAll();
                 // 此时已经可以显示内容了
@@ -719,7 +757,6 @@
 
             // 登录成功
             currentUser = role;
-            state.currentRole = role;
             sessionStorage.setItem('current_user', role);
             localStorage.setItem('remembered_account', acc);
             
@@ -731,11 +768,11 @@
         }
 
         function editNickname() {
-            const currentNick = state.nicknames[state.currentRole];
+            const currentNick = state.nicknames[currentUser];
             
             const newNick = prompt('修改你的昵称:', currentNick);
             if (newNick !== null && newNick.trim()) {
-                state.nicknames[state.currentRole] = newNick.trim();
+                state.nicknames[currentUser] = newNick.trim();
                 addHistory(`${currentNick} 将昵称修改为了 ${newNick.trim()}`);
                 saveData();
                 renderAll();
@@ -866,7 +903,8 @@
 
         function switchRole(role) {
             // 已禁用手动切换，此函数仅供内部兼容使用
-            state.currentRole = role; 
+            currentUser = role;
+            sessionStorage.setItem('current_user', role);
             document.body.className = `role-${role} auth-ready`;
             renderAll(); 
             saveData();
@@ -964,7 +1002,7 @@
             
             const todayStr = getShanghaiDate().yyyymmdd;
             const btn = document.getElementById('checkin-btn');
-            if (state.checkIns[todayStr] && state.checkIns[todayStr].includes(state.currentRole)) {
+            if (state.checkIns[todayStr] && state.checkIns[todayStr].includes(currentUser)) {
                 btn.innerText = '✅ 今日已签到'; btn.classList.add('disabled');
             } else {
                 btn.innerText = '✨ 每日签到'; btn.classList.remove('disabled');
@@ -980,7 +1018,7 @@
             
             const events = getEventsForDate(y, m, d);
             const isToday = getShanghaiDate().yyyymmdd === yyyymmdd;
-            const checked = state.checkIns[yyyymmdd] && state.checkIns[yyyymmdd].includes(state.currentRole);
+            const checked = state.checkIns[yyyymmdd] && state.checkIns[yyyymmdd].includes(currentUser);
             
             const hasSysEvent = events.some(e => e.type === 'system');
             const hasUserEvent = !!state.userEvents[mmdd];
@@ -1023,17 +1061,17 @@
             if (!currentUser) return showLogin();
             const today = getShanghaiDate();
             const todayStr = today.yyyymmdd;
-            if (state.checkIns[todayStr] && state.checkIns[todayStr].includes(state.currentRole)) return;
+            if (state.checkIns[todayStr] && state.checkIns[todayStr].includes(currentUser)) return;
             
             const events = getEventsForDate(today.year, today.month, today.day);
             const isSpecial = events.some(e => e.type === 'system');
             const points = isSpecial ? 3 : 1;
             
-            state.scores[state.currentRole] += points;
+            state.scores[currentUser] += points;
             if (!state.checkIns[todayStr]) state.checkIns[todayStr] = [];
-            state.checkIns[todayStr].push(state.currentRole);
+            state.checkIns[todayStr].push(currentUser);
             
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             addHistory(`${nickname} 签到成功，获得 ${points} 积分${isSpecial ? ' (纪念日奖励!)' : ''}`);
             createHeartEffect(); renderAll(); saveData();
         }
@@ -1079,7 +1117,7 @@
                 if (eventVal) state.userEvents[mmdd] = eventVal; else delete state.userEvents[mmdd];
                 if (noteVal) state.userNotes[yyyymmdd] = noteVal; else delete state.userNotes[yyyymmdd];
                 
-                const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+                const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
                 addHistory(`${nickname} 更新了 ${m + 1}月${d}日 的纪念日/备注`);
                 renderAll(); saveData(); closeModal(); return;
             }
@@ -1126,8 +1164,8 @@
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     const task = state.tasks.find(t => t.id === editingId);
-                    const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
-                    state.requests.push({ id: Date.now(), type: 'task', name: task.name, points: task.points, desc: task.desc, requester: state.currentRole, targetRole: state.currentRole === 'girl' ? 'boy' : 'girl', image: e.target.result });
+                    const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
+                    state.requests.push({ id: Date.now(), type: 'task', name: task.name, points: task.points, desc: task.desc, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl', image: e.target.result });
                     addHistory(`${nickname} 提交了任务 ${task.name} 的完成申请`);
                     renderAll(); saveData(); closeModal(); alert('申请已发送');
                 };
@@ -1142,10 +1180,10 @@
                 if (!content && !file && !title) return alert('写点什么或发张图吧');
 
                 const createPostData = (img = null) => {
-                    const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+                    const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
                     state.posts.push({
                         id: Date.now(),
-                        role: state.currentRole,
+                        role: currentUser,
                         title: title,
                         content: content || (img ? '分享美好瞬间' : ''),
                         image: img,
@@ -1170,14 +1208,14 @@
             const name = document.getElementById('input-name').value;
             const points = parseInt(document.getElementById('input-points').value) || 0;
             const desc = document.getElementById('input-desc').value;
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
 
             if (currentModalType === 'wishlist') {
-                state.requests.push({ id: Date.now(), type: 'wishlist_apply', name, points, desc, requester: state.currentRole, targetRole: state.currentRole === 'girl' ? 'boy' : 'girl' });
+                state.requests.push({ id: Date.now(), type: 'wishlist_apply', name, points, desc, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl' });
                 addHistory(`${nickname} 提交了愿望 ${name} 的发布申请`);
             } else {
                 const list = currentModalType === 'task' ? state.tasks : state.wishes;
-                list.push({ id: Date.now(), name, points, desc, creator: state.currentRole });
+                list.push({ id: Date.now(), name, points, desc, creator: currentUser });
                 addHistory(`${nickname} 创建了${currentModalType === 'task' ? '任务' : '愿望商店项目'} ${name}`);
             }
             renderAll(); saveData(); closeModal();
@@ -1329,7 +1367,7 @@
             if (!currentUser) return showLogin();
             
             renderDogClicks();
-            const role = state.currentRole;
+            const role = currentUser;
             const nickname = state.nicknames[role] || state.accounts[role];
             document.getElementById('role-nickname').innerText = nickname;
             animateScore(state.scores[role]); renderCalendar(); renderSpace();
@@ -1422,7 +1460,7 @@
         function deletePost(id) {
             const post = state.posts.find(p => p.id === id);
             if (confirm('确定删除这条动态吗？')) {
-                const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+                const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
                 addHistory(`${nickname} 删除了动态${post.title ? `: ${post.title}` : ''}`);
                 state.posts = state.posts.filter(p => p.id !== id);
                 renderAll(); saveData();
@@ -1435,10 +1473,10 @@
             if (!text) return;
             const post = state.posts.find(p => p.id === postId);
             if (!post.comments) post.comments = [];
-            post.comments.push({ role: state.currentRole, text, time: formatLocalTime(new Date()), replies: [] });
+            post.comments.push({ role: currentUser, text, time: formatLocalTime(new Date()), replies: [] });
             input.value = '';
             
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             const postAuthor = state.nicknames[post.role] || state.accounts[post.role];
             addHistory(`${nickname} 评论了 ${postAuthor} 的动态`);
             
@@ -1450,9 +1488,9 @@
             if (!text) return;
             const post = state.posts.find(p => p.id === postId);
             if (!post.comments[commentIdx].replies) post.comments[commentIdx].replies = [];
-            post.comments[commentIdx].replies.push({ role: state.currentRole, text, time: new Date().toLocaleString() });
+            post.comments[commentIdx].replies.push({ role: currentUser, text, time: new Date().toLocaleString() });
             
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             const comment = post.comments[commentIdx];
             const commentAuthor = state.nicknames[comment.role] || state.accounts[comment.role];
             addHistory(`${nickname} 回复了 ${commentAuthor} 的评论`);
@@ -1468,20 +1506,202 @@
             if (boyCount) boyCount.innerText = state.dogClicks.boy;
         }
 
-        function handleDogClick() {
-            if (!state.currentRole) return showLogin();
-            const dog = document.getElementById('dog-trigger');
-            if (!dog) return;
-            
-            // 所有人都可以点击，且都能看到动画
-            dog.classList.remove('animate');
-            void dog.offsetWidth; // 触发重绘
-            dog.classList.add('animate');
+        let suppressPetClick = { dog: false, cat: false };
 
-            // 计数逻辑：增加当前登录角色的计数
+        function initPetDrag() {
+            const dog = document.getElementById('dog-trigger');
+            const cat = document.getElementById('cat-trigger');
+            const anchor = document.getElementById('pet-origin-anchor');
+            if (!dog || !cat || !anchor) return;
+
+            if (dog.parentElement !== document.body) document.body.appendChild(dog);
+            if (cat.parentElement !== document.body) document.body.appendChild(cat);
+
+            dog.style.position = 'fixed';
+            cat.style.position = 'fixed';
+            dog.style.zIndex = '2147483000';
+            cat.style.zIndex = '2147483000';
+
+            const PET_GAP = -30;
+            const SPRING_K = 0.16;
+            const SPRING_DAMP = 0.78;
+
+            const getPos = (el) => ({ x: parseFloat(el.style.left) || el.getBoundingClientRect().left, y: parseFloat(el.style.top) || el.getBoundingClientRect().top });
+            const setPos = (el, x, y) => { el.style.left = `${x}px`; el.style.top = `${y}px`; };
+            const getGap = () => Math.max(dog.getBoundingClientRect().width, cat.getBoundingClientRect().width) + PET_GAP;
+
+            let activeLeader = null;
+            let activeLeaderKey = '';
+            let follower = null;
+            let dragging = false;
+            let moved = false;
+            let startX = 0;
+            let startY = 0;
+            let startLeft = 0;
+            let startTop = 0;
+
+            let fx = 0;
+            let fy = 0;
+            let fvx = 0;
+            let fvy = 0;
+            let tx = 0;
+            let ty = 0;
+            let rafId = 0;
+            let leaderHistory = [];
+            const DELAY = 300;
+
+            const ensureSpringLoop = () => {
+                if (rafId) return;
+                const step = () => {
+                    if (!follower || !activeLeader) {
+                        rafId = 0;
+                        return;
+                    }
+
+                    const now = performance.now();
+                    const leaderPos = getPos(activeLeader);
+
+                    if (dragging) {
+                        leaderHistory.push({ x: leaderPos.x, y: leaderPos.y, t: now });
+                    }
+
+                    let targetHist = leaderHistory[0];
+                    let spliceIdx = 0;
+                    for (let i = 0; i < leaderHistory.length; i++) {
+                        if (now - leaderHistory[i].t >= DELAY) {
+                            targetHist = leaderHistory[i];
+                            spliceIdx = i;
+                        } else {
+                            break;
+                        }
+                    }
+                    if (spliceIdx > 0) {
+                        leaderHistory.splice(0, spliceIdx);
+                    }
+
+                    const gap = getGap();
+                    
+                    let dx = fx - targetHist.x;
+                    let dy = fy - targetHist.y;
+                    let d = Math.sqrt(dx * dx + dy * dy);
+                    if (d < 0.001) { dx = 1; dy = 0; d = 1; }
+                    
+                    tx = targetHist.x + (dx / d) * gap;
+                    ty = targetHist.y + (dy / d) * gap;
+
+                    fvx = (fvx + (tx - fx) * SPRING_K) * SPRING_DAMP;
+                    fvy = (fvy + (ty - fy) * SPRING_K) * SPRING_DAMP;
+                    fx += fvx;
+                    fy += fvy;
+                    setPos(follower, fx, fy);
+
+                    const settle = Math.abs(tx - fx) + Math.abs(ty - fy) + Math.abs(fvx) + Math.abs(fvy);
+                    if (!dragging && leaderHistory.length <= 1 && settle < 0.25) {
+                        setPos(follower, tx, ty);
+                        rafId = 0;
+                        return;
+                    }
+
+                    rafId = requestAnimationFrame(step);
+                };
+                rafId = requestAnimationFrame(step);
+            };
+
+            const syncToAnchor = () => {
+                if (dog.dataset.dragged === '1' || cat.dataset.dragged === '1') return;
+                const rect = anchor.getBoundingClientRect();
+                const dogW = dog.getBoundingClientRect().width || 84;
+                const catW = cat.getBoundingClientRect().width || 84;
+                const totalW = dogW + catW + PET_GAP;
+                const startXLocal = rect.left + (rect.width - totalW) / 2;
+                const y = rect.top + (rect.height - Math.max(dogW, catW)) / 2;
+                setPos(dog, startXLocal, y);
+                setPos(cat, startXLocal + dogW + PET_GAP, y);
+            };
+
+            syncToAnchor();
+            window.addEventListener('resize', syncToAnchor);
+            window.addEventListener('scroll', syncToAnchor);
+
+            const bindStart = (leader, leaderKey, followEl) => (e) => {
+                if (e.pointerType === 'mouse' && e.button !== 0) return;
+                e.preventDefault();
+
+                activeLeader = leader;
+                activeLeaderKey = leaderKey;
+                follower = followEl;
+
+                const leaderPos = getPos(leader);
+                const followerPos = getPos(follower);
+
+                dragging = true;
+                moved = false;
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = leaderPos.x;
+                startTop = leaderPos.y;
+
+                fx = followerPos.x;
+                fy = followerPos.y;
+                fvx = 0;
+                fvy = 0;
+                leaderHistory = [{ x: leaderPos.x, y: leaderPos.y, t: performance.now() }];
+
+                leader.classList.add('dragging');
+                leader.setPointerCapture(e.pointerId);
+                ensureSpringLoop();
+            };
+
+            dog.addEventListener('pointerdown', bindStart(dog, 'dog', cat));
+            cat.addEventListener('pointerdown', bindStart(cat, 'cat', dog));
+
+            window.addEventListener('pointermove', (e) => {
+                if (!dragging || !activeLeader) return;
+                e.preventDefault();
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                if (!moved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) moved = true;
+                if (!moved) return;
+                setPos(activeLeader, startLeft + dx, startTop + dy);
+            }, { passive: false });
+
+            const onPointerEnd = (e) => {
+                if (!dragging || !activeLeader) return;
+                dragging = false;
+                activeLeader.classList.remove('dragging');
+                try { activeLeader.releasePointerCapture(e.pointerId); } catch (_) {}
+
+                if (moved) {
+                    suppressPetClick[activeLeaderKey] = true;
+                    dog.dataset.dragged = '1';
+                    cat.dataset.dragged = '1';
+                }
+
+                ensureSpringLoop();
+            };
+
+            window.addEventListener('pointerup', onPointerEnd);
+            window.addEventListener('pointercancel', onPointerEnd);
+        }
+
+        function handleDogClick(e, petType) {
+            if (!currentUser) return showLogin();
+            if (!petType) return;
+            if (suppressPetClick[petType]) {
+                suppressPetClick[petType] = false;
+                return;
+            }
+
+            const pet = document.getElementById(`${petType}-trigger`);
+            if (!pet) return;
+
+            pet.classList.remove('animate');
+            void pet.offsetWidth;
+            pet.classList.add('animate');
+
             if (!state.dogClicks) state.dogClicks = { girl: 0, boy: 0 };
-            state.dogClicks[state.currentRole]++;
-            
+            state.dogClicks[currentUser]++;
+
             saveData();
             renderDogClicks();
         }
@@ -1513,7 +1733,7 @@
             if (confirmBtn) confirmBtn.innerText = '确认';
         }
         function openResetModal() { 
-            if (!state.currentRole) return alert('请先登录后再进行此操作');
+            if (!currentUser) return alert('请先登录后再进行此操作');
             currentModalType = 'reset'; 
             document.getElementById('modal-title').innerText = '重置确认'; 
             document.getElementById('modal-label-1').innerText = '验证密码'; 
@@ -1572,7 +1792,7 @@
         function approveRequest(id) { 
             const idx = state.requests.findIndex(r => r.id === id); 
             const req = state.requests[idx]; 
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             const requesterName = state.nicknames[req.requester] || state.accounts[req.requester];
             
             if (req.type === 'wish') {
@@ -1588,7 +1808,7 @@
         function approveWishlistApply(id) { 
             const idx = state.requests.findIndex(r => r.id === id); 
             const req = state.requests[idx]; 
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             const requesterName = state.nicknames[req.requester] || state.accounts[req.requester];
             
             state.wishlist.push({ ...req, id: Date.now() }); 
@@ -1599,9 +1819,9 @@
         function approveWishlistItem(id) { 
             const idx = state.wishlist.findIndex(i => i.id === id); 
             const item = state.wishlist[idx]; 
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             
-            state.wishes.push({ ...item, id: Date.now(), creator: state.currentRole }); 
+            state.wishes.push({ ...item, id: Date.now(), creator: currentUser }); 
             state.wishlist.splice(idx, 1); 
             addHistory(`${nickname} 采纳了愿望清单中的项目: ${item.name}`);
             renderAll(); saveData(); 
@@ -1610,7 +1830,7 @@
             if (!confirm('确定要驳回这条申请吗？')) return;
             const idx = state.requests.findIndex(r => r.id === id);
             const req = state.requests[idx];
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             const requesterName = state.nicknames[req.requester] || state.accounts[req.requester];
             
             addHistory(`${nickname} 驳回了 ${requesterName} 的申请: ${req.name}`);
@@ -1621,7 +1841,7 @@
             if (!confirm('确定要撤销这条申请吗？')) return;
             const idx = state.requests.findIndex(r => r.id === id);
             const req = state.requests[idx];
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             
             addHistory(`${nickname} 撤销了申请: ${req.name}`);
             state.requests.splice(idx, 1); 
@@ -1632,7 +1852,7 @@
             const l = t === 'task' ? state.tasks : state.wishes; 
             const idx = l.findIndex(i => i.id === id);
             const item = l[idx];
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             
             addHistory(`${nickname} 删除了${t === 'task' ? '任务' : '愿望'}: ${item.name}`);
             l.splice(idx, 1); 
@@ -1642,7 +1862,7 @@
             if (!confirm('确定要删除这个心愿计划吗？')) return;
             const idx = state.wishlist.findIndex(i => i.id === id);
             const item = state.wishlist[idx];
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             
             addHistory(`${nickname} 删除了心愿清单中的项目: ${item.name}`);
             state.wishlist.splice(idx, 1); 
@@ -1650,10 +1870,10 @@
         }
         function confirmRedeemWish(id) { 
             const wish = state.wishes.find(w => w.id === id); 
-            if (state.scores[state.currentRole] < wish.points) return alert('积分不足'); 
-            const nickname = state.nicknames[state.currentRole] || state.accounts[state.currentRole];
+            if (state.scores[currentUser] < wish.points) return alert('积分不足'); 
+            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             
-            state.requests.push({ id: Date.now(), type: 'wish', name: wish.name, points: wish.points, requester: state.currentRole, targetRole: state.currentRole === 'girl' ? 'boy' : 'girl' }); 
+            state.requests.push({ id: Date.now(), type: 'wish', name: wish.name, points: wish.points, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl' }); 
             addHistory(`${nickname} 申请兑换愿望: ${wish.name}`);
             renderAll(); saveData(); 
         }
@@ -1661,10 +1881,10 @@
         const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d'); let particles = [];
         function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
         window.addEventListener('resize', resize); resize();
-        class Particle { constructor() { this.x = canvas.width / 2; this.y = canvas.height / 2; this.size = Math.random() * 15 + 10; this.speedX = Math.random() * 6 - 3; this.speedY = Math.random() * -10 - 2; this.opacity = 1; this.color = state.currentRole === 'girl' ? '#d5a4a9' : '#9ba4b4'; } update() { this.x += this.speedX; this.y += this.speedY; this.speedY += 0.2; this.opacity -= 0.02; } draw() { ctx.globalAlpha = this.opacity; ctx.fillStyle = this.color; ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.bezierCurveTo(this.x - this.size/2, this.y - this.size/2, this.x - this.size, this.y + this.size/3, this.x, this.y + this.size); ctx.bezierCurveTo(this.x + this.size, this.y + this.size/3, this.x + this.size/2, this.y - this.size/2, this.x, this.y); ctx.fill(); } }
+        class Particle { constructor() { this.x = canvas.width / 2; this.y = canvas.height / 2; this.size = Math.random() * 15 + 10; this.speedX = Math.random() * 6 - 3; this.speedY = Math.random() * -10 - 2; this.opacity = 1; this.color = currentUser === 'girl' ? '#d5a4a9' : '#9ba4b4'; } update() { this.x += this.speedX; this.y += this.speedY; this.speedY += 0.2; this.opacity -= 0.02; } draw() { ctx.globalAlpha = this.opacity; ctx.fillStyle = this.color; ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.bezierCurveTo(this.x - this.size/2, this.y - this.size/2, this.x - this.size, this.y + this.size/3, this.x, this.y + this.size); ctx.bezierCurveTo(this.x + this.size, this.y + this.size/3, this.x + this.size/2, this.y - this.size/2, this.x, this.y); ctx.fill(); } }
         function createHeartEffect() { for (let i = 0; i < 20; i++) particles.push(new Particle()); }
         function animateParticles() { ctx.clearRect(0, 0, canvas.width, canvas.height); particles = particles.filter(p => { p.update(); p.draw(); return p.opacity > 0; }); requestAnimationFrame(animateParticles); }
-        animateParticles(); loadData();
+        animateParticles(); loadData(); initPetDrag();
     </script>
 </body>
 </html>
