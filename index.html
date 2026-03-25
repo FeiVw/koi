@@ -175,7 +175,7 @@
         #setup-overlay, #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--theme-bg); display: none; flex-direction: column; align-items: center; z-index: 2000; overflow-y: auto; padding: 40px 0; }
         
         /* 初始隐藏页面，防止加载闪现 */
-        body:not(.auth-ready) header, body:not(.auth-ready) main, body:not(.auth-ready) .floating-pet { display: none !important; }
+        body:not(.logged-in) header, body:not(.logged-in) main, body:not(.logged-in) .floating-pet { display: none !important; }
 
         .setup-card, .login-card { 
             background: var(--white); width: 90%; max-width: 400px; 
@@ -261,6 +261,7 @@
             margin: 0;
             user-select: none;
             will-change: left, top, transform;
+            touch-action: none;
         }
         .pet-pair.animate {
             animation: pair-bounce 0.4s ease;
@@ -638,7 +639,7 @@
 
             if (sessionUser && hasRegisteredLocal) {
                 currentUser = sessionUser;
-                document.body.className = `role-${currentUser}`;
+                document.body.className = `role-${currentUser} logged-in`;
                 renderAll();
                 // 此时已经可以显示内容了
                 document.body.classList.add('auth-ready');
@@ -760,7 +761,7 @@
             sessionStorage.setItem('current_user', role);
             localStorage.setItem('remembered_account', acc);
             
-            document.body.className = `role-${role} auth-ready`;
+            document.body.className = `role-${role} auth-ready logged-in`;
             document.getElementById('login-overlay').style.display = 'none';
             renderAll();
             updateLocation(); // 登录时获取一次位置
@@ -905,7 +906,7 @@
             // 已禁用手动切换，此函数仅供内部兼容使用
             currentUser = role;
             sessionStorage.setItem('current_user', role);
-            document.body.className = `role-${role} auth-ready`;
+            document.body.className = `role-${role} auth-ready logged-in`;
             renderAll(); 
             saveData();
         }
@@ -1609,12 +1610,11 @@
 
             const syncToAnchor = () => {
                 if (dog.dataset.dragged === '1' || cat.dataset.dragged === '1') return;
-                const rect = anchor.getBoundingClientRect();
                 const dogW = dog.getBoundingClientRect().width || 84;
                 const catW = cat.getBoundingClientRect().width || 84;
                 const totalW = dogW + catW + PET_GAP;
-                const startXLocal = rect.left + (rect.width - totalW) / 2;
-                const y = rect.top + (rect.height - Math.max(dogW, catW)) / 2;
+                const startXLocal = (window.innerWidth - totalW) / 2;
+                const y = (window.innerHeight - Math.max(dogW, catW)) / 2;
                 setPos(dog, startXLocal, y);
                 setPos(cat, startXLocal + dogW + PET_GAP, y);
             };

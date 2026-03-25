@@ -1,11 +1,12 @@
 {
     "version": "0.2.0",
     "configurations": [
+
         {
             "name": "在浏览器中预览主页",
             "request": "launch",
             "type": "msedge",
-            "file": "${workspaceFolder}/love_token.html"
+            "file": "${workspaceFolder}/index.html"
         },
         {
             "name": "在浏览器中预览参考手册",
