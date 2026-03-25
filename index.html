@@ -804,7 +804,7 @@
         function mergeStateForLoad(localState, cloudState) {
             const merged = normalizeState(cloudState);
 
-            ['tasks', 'wishes', 'wishlist', 'requests', 'history', 'posts'].forEach(field => {
+            ['tasks', 'wishes', 'wishlist', 'history', 'posts'].forEach(field => {
                 if (!merged[field].length && localState[field].length) {
                     merged[field] = localState[field];
                 }
@@ -1078,7 +1078,7 @@
         function saveData() { 
             state = normalizeState(state);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
-            syncToCloud();
+            return syncToCloud();
         }
 
         async function syncToCloud() {
@@ -1557,36 +1557,61 @@
             }
         }
 
-        async function updateLocation() {
-            if (!currentUser || !navigator.geolocation) return;
+        async function persistLocation(role, location) {
+            if (!role) return null;
+            if (!state.locations) state.locations = createDefaultState().locations;
+
+            const normalizedLocation = normalizeLocation(location);
+            state.locations[role] = normalizedLocation;
+            await saveData();
+            if (role === currentUser) updateWeather();
+            return normalizedLocation;
+        }
+
+        async function reverseGeocodeLocation(lat, lon) {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`, {
+                headers: { 'Accept-Language': 'zh-CN' }
+            });
+            const data = await res.json();
+            return {
+                city: data.address.city || data.address.town || data.address.village || data.address.state || '未知城市',
+                lat,
+                lon,
+                time: Date.now()
+            };
+        }
+
+        async function updateLocation(role = currentUser) {
+            if (!role || !navigator.geolocation) {
+                if (!navigator.geolocation) console.warn('当前浏览器不支持定位');
+                return null;
+            }
             
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                
-                try {
-                    // 使用 逆地理编码 获取城市名 (这里使用 nominatim 免费接口)
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`, {
-                        headers: { 'Accept-Language': 'zh-CN' }
-                    });
-                    const data = await res.json();
-                    const city = data.address.city || data.address.town || data.address.village || data.address.state || '未知城市';
+            return new Promise((resolve) => {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
                     
-                    state.locations[currentUser] = {
-                        city: city,
-                        lat: lat,
-                        lon: lon,
-                        time: new Date().getTime()
-                    };
-                    saveData();
-                    console.log('位置已自动更新:', city);
-                } catch (err) {
-                    console.error('逆地理编码失败:', err);
-                }
-            }, (err) => {
-                console.warn('获取定位权限失败或被拒绝:', err);
+                    try {
+                        const location = await reverseGeocodeLocation(lat, lon);
+                        await persistLocation(role, location);
+                        console.log('位置已自动更新并写入数据库:', location.city);
+                        resolve(location);
+                    } catch (err) {
+                        console.error('逆地理编码失败:', err);
+                        resolve(null);
+                    }
+                }, (err) => {
+                    console.warn('获取定位权限失败或被拒绝:', err);
+                    resolve(null);
+                }, {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                });
             });
         }
+
 
         async function updateWeather() {
             if (!currentUser) return;
@@ -2148,17 +2173,14 @@
                 document.getElementById('evidence-group').style.display = 'block';
                 document.getElementById('file-label').innerText = '配张美照';
                 
-                // Try to get location
-                if (navigator.geolocation) {
-                    document.getElementById('location-display').innerText = '正在获取位置...';
-                    navigator.geolocation.getCurrentPosition(pos => {
-                        const lat = pos.coords.latitude.toFixed(2);
-                        const lng = pos.coords.longitude.toFixed(2);
-                        document.getElementById('location-display').innerText = `经纬度: ${lat}, ${lng} (模拟位置)`;
-                    }, () => {
+                document.getElementById('location-display').innerText = '正在获取位置...';
+                updateLocation().then((location) => {
+                    if (location?.city) {
+                        document.getElementById('location-display').innerText = `📍 ${location.city}`;
+                    } else {
                         document.getElementById('location-display').innerText = '无法获取精确位置，请手动输入或留空';
-                    });
-                }
+                    }
+                });
             } else if (type === 'task_apply') {
                 document.getElementById('points-group').style.display = 'none';
                 document.getElementById('evidence-group').style.display = 'block';
@@ -2167,9 +2189,12 @@
             document.getElementById('modal-overlay').style.display = 'flex';
         }
         function changeMonth(step) { viewDate.setMonth(viewDate.getMonth() + step); renderCalendar(); }
+        function removeRequestById(id) {
+            state.requests = state.requests.filter(r => String(r.id) !== String(id));
+        }
         function approveRequest(id) { 
-            const idx = state.requests.findIndex(r => r.id === id); 
-            const req = state.requests[idx]; 
+            const req = state.requests.find(r => String(r.id) === String(id));
+            if (!req) return;
             const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             const requesterName = state.nicknames[req.requester] || state.accounts[req.requester];
             
@@ -2180,17 +2205,17 @@
                 state.scores[req.requester] += req.points;
                 addHistory(`${nickname} 准了 ${requesterName} 的任务完成: ${req.name} (+${req.points} 积分)`);
             }
-            state.requests.splice(idx, 1); 
+            removeRequestById(id);
             renderAll(); saveData(); 
         }
         function approveWishlistApply(id) { 
-            const idx = state.requests.findIndex(r => r.id === id); 
-            const req = state.requests[idx]; 
+            const req = state.requests.find(r => String(r.id) === String(id));
+            if (!req) return;
             const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             const requesterName = state.nicknames[req.requester] || state.accounts[req.requester];
             
             state.wishlist.push({ ...req, id: Date.now() }); 
-            state.requests.splice(idx, 1); 
+            removeRequestById(id);
             addHistory(`${nickname} 准了 ${requesterName} 的愿望发布: ${req.name}`);
             renderAll(); saveData(); 
         }
@@ -2206,23 +2231,23 @@
         }
         function rejectRequest(id) { 
             if (!confirm('确定要驳回这条申请吗？')) return;
-            const idx = state.requests.findIndex(r => r.id === id);
-            const req = state.requests[idx];
+            const req = state.requests.find(r => String(r.id) === String(id));
+            if (!req) return;
             const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             const requesterName = state.nicknames[req.requester] || state.accounts[req.requester];
             
             addHistory(`${nickname} 驳回了 ${requesterName} 的申请: ${req.name}`);
-            state.requests.splice(idx, 1); 
+            removeRequestById(id);
             renderAll(); saveData(); 
         }
         function deleteRequest(id) { 
             if (!confirm('确定要撤销这条申请吗？')) return;
-            const idx = state.requests.findIndex(r => r.id === id);
-            const req = state.requests[idx];
+            const req = state.requests.find(r => String(r.id) === String(id));
+            if (!req) return;
             const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
             
             addHistory(`${nickname} 撤销了申请: ${req.name}`);
-            state.requests.splice(idx, 1); 
+            removeRequestById(id);
             renderAll(); saveData(); 
         }
         function deleteItem(t, id) { 
