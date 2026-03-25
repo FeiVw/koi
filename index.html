@@ -926,7 +926,18 @@
             if (!hasAnyRegisteredRole(latestState)) {
                 showSetup();
             } else {
-                showLogin();
+                // 尝试从 localStorage 获取持久化的登录态
+                const savedRole = localStorage.getItem('shiro_current_user');
+                if (savedRole && (savedRole === 'girl' || savedRole === 'boy') && hasCompleteRoleCredentials(latestState, savedRole)) {
+                    currentUser = savedRole;
+                    document.body.className = `role-${currentUser} auth-ready logged-in`;
+                    updatePetVisibility();
+                    renderAll();
+                    // 自动更新位置
+                    updateLocation();
+                } else {
+                    showLogin();
+                }
             }
             document.body.classList.add('auth-ready');
         }
@@ -995,6 +1006,7 @@
             if (pw !== latestState.passwords[role]) return alert('密码错误');
 
             currentUser = role;
+            localStorage.setItem('shiro_current_user', role);
             document.body.className = `role-${role} auth-ready logged-in`;
             updatePetVisibility();
             document.getElementById('login-overlay').style.display = 'none';
@@ -1465,6 +1477,7 @@
                 }
 
                 currentUser = null;
+                localStorage.removeItem('shiro_current_user');
                 alert('全部数据已重置，页面即将刷新。');
                 location.reload();
                 return;
