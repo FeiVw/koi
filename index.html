@@ -645,16 +645,58 @@
             return Number.isFinite(parsed) ? parsed : 0;
         }
 
+        function normalizeOptionalNumber(value) {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : null;
+        }
+
+        function normalizeTimestamp(value) {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+        }
+
         function normalizeLocation(value) {
             const fallback = { city: '未知', lat: null, lon: null, time: null };
             if (!isPlainObject(value)) return { ...fallback };
             return {
                 city: normalizeText(value.city) || '未知',
-                lat: typeof value.lat === 'number' ? value.lat : null,
-                lon: typeof value.lon === 'number' ? value.lon : null,
-                time: normalizeText(value.time),
+                lat: normalizeOptionalNumber(value.lat),
+                lon: normalizeOptionalNumber(value.lon),
+                time: normalizeTimestamp(value.time),
             };
         }
+
+        function hasUsefulLocation(location) {
+            return !!location && (
+                location.city !== '未知' ||
+                location.lat !== null ||
+                location.lon !== null ||
+                location.time !== null
+            );
+        }
+
+        function mergeLocationEntry(localLocation, cloudLocation, preferredSource = 'newer') {
+            const local = normalizeLocation(localLocation);
+            const cloud = normalizeLocation(cloudLocation);
+            const localHas = hasUsefulLocation(local);
+            const cloudHas = hasUsefulLocation(cloud);
+
+            if (!localHas && !cloudHas) return { ...cloud };
+            if (!localHas) return { ...cloud };
+            if (!cloudHas) return { ...local };
+
+            const localTime = local.time || 0;
+            const cloudTime = cloud.time || 0;
+
+            if (preferredSource === 'local') {
+                return localTime >= cloudTime || !cloudTime ? { ...local } : { ...cloud };
+            }
+            if (preferredSource === 'cloud') {
+                return cloudTime >= localTime || !localTime ? { ...cloud } : { ...local };
+            }
+            return localTime >= cloudTime ? { ...local } : { ...cloud };
+        }
+
 
         function hasCompleteRoleCredentials(snapshot, role) {
             return !!(snapshot?.accounts?.[role] && snapshot?.passwords?.[role]);
@@ -784,20 +826,17 @@
 
                 if (!merged.scores[role] && localState.scores[role]) merged.scores[role] = localState.scores[role];
                 if (!merged.dogClicks[role] && localState.dogClicks[role]) merged.dogClicks[role] = localState.dogClicks[role];
-                if (merged.locations[role].city === '未知' && localState.locations[role].city !== '未知') {
-                    merged.locations[role] = { ...merged.locations[role], ...localState.locations[role] };
-                }
+                merged.locations[role] = mergeLocationEntry(localState.locations[role], cloudState.locations[role]);
             });
 
             if (!hasAnyRegisteredRole(cloudState) && localState.startDate) {
                 merged.startDate = localState.startDate;
             }
 
-
             return repairBrokenAccounts(merged);
         }
 
-        function mergeStateForSync(localState, cloudState) {
+        function mergeStateForSync(localState, cloudState, actorRole = currentUser) {
             const merged = normalizeState(localState);
             ROLE_KEYS.forEach(role => {
                 if (!hasCompleteRoleCredentials(merged, role) && hasCompleteRoleCredentials(cloudState, role)) {
@@ -806,9 +845,13 @@
                     if (!merged.nicknames[role] && cloudState.nicknames[role]) merged.nicknames[role] = cloudState.nicknames[role];
                     if (!merged.birthdays[role] && cloudState.birthdays[role]) merged.birthdays[role] = cloudState.birthdays[role];
                 }
+
+                const locationPreference = actorRole ? (role === actorRole ? 'local' : 'cloud') : 'newer';
+                merged.locations[role] = mergeLocationEntry(localState.locations[role], cloudState.locations[role], locationPreference);
             });
             return repairBrokenAccounts(merged);
         }
+
 
         function findRoleByAccount(account, snapshot = state) {
             const normalizedAccount = normalizeText(account);
@@ -1051,7 +1094,8 @@
                 if (readError) throw readError;
 
                 const cloudSnapshot = cloudRow?.data ? normalizeState(cloudRow.data) : createDefaultState();
-                const mergedState = mergeStateForSync(localSnapshot, cloudSnapshot);
+                const mergedState = mergeStateForSync(localSnapshot, cloudSnapshot, currentUser);
+
                 state = mergedState;
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 
