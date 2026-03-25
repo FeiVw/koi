@@ -28,6 +28,11 @@
             background-color: var(--theme-bg); color: var(--theme-text);
             transition: var(--transition); min-height: 100vh; padding-bottom: 80px;
         }
+        html.pet-dragging, body.pet-dragging {
+            overflow: hidden !important;
+            touch-action: none;
+            overscroll-behavior: none;
+        }
 
         header {
             padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 15px;
@@ -262,6 +267,8 @@
             user-select: none;
             will-change: left, top, transform;
             touch-action: none;
+            -webkit-user-drag: none;
+            -webkit-touch-callout: none;
         }
         .pet-pair.animate {
             animation: pair-bounce 0.4s ease;
@@ -643,6 +650,7 @@
                 renderAll();
                 // 此时已经可以显示内容了
                 document.body.classList.add('auth-ready');
+                updatePetVisibility();
             }
 
             // --- 后台/后续同步远程数据 ---
@@ -694,6 +702,8 @@
 
 
         function showLogin() {
+            document.body.classList.remove('logged-in');
+            updatePetVisibility();
             document.getElementById('login-overlay').style.display = 'flex';
             document.getElementById('setup-overlay').style.display = 'none';
             // 回填记忆的账号
@@ -704,6 +714,8 @@
         }
 
         function showSetup() {
+            document.body.classList.remove('logged-in');
+            updatePetVisibility();
             document.getElementById('login-overlay').style.display = 'none';
             document.getElementById('setup-overlay').style.display = 'flex';
             updateSetupTheme('girl'); // 默认选中女生主题
@@ -762,6 +774,7 @@
             localStorage.setItem('remembered_account', acc);
             
             document.body.className = `role-${role} auth-ready logged-in`;
+            updatePetVisibility();
             document.getElementById('login-overlay').style.display = 'none';
             renderAll();
             updateLocation(); // 登录时获取一次位置
@@ -907,6 +920,7 @@
             currentUser = role;
             sessionStorage.setItem('current_user', role);
             document.body.className = `role-${role} auth-ready logged-in`;
+            updatePetVisibility();
             renderAll(); 
             saveData();
         }
@@ -1509,6 +1523,17 @@
 
         let suppressPetClick = { dog: false, cat: false };
 
+        function updatePetVisibility() {
+            const visible = !!currentUser && document.body.classList.contains('logged-in');
+            const dog = document.getElementById('dog-trigger');
+            const cat = document.getElementById('cat-trigger');
+            [dog, cat].forEach((pet) => {
+                if (!pet) return;
+                pet.style.display = visible ? 'block' : 'none';
+                pet.style.pointerEvents = visible ? 'auto' : 'none';
+            });
+        }
+
         function initPetDrag() {
             const dog = document.getElementById('dog-trigger');
             const cat = document.getElementById('cat-trigger');
@@ -1620,8 +1645,22 @@
             };
 
             syncToAnchor();
+            updatePetVisibility();
             window.addEventListener('resize', syncToAnchor);
             window.addEventListener('scroll', syncToAnchor);
+
+            const setDragScrollLock = (locked) => {
+                document.documentElement.classList.toggle('pet-dragging', locked);
+                document.body.classList.toggle('pet-dragging', locked);
+            };
+
+            const preventTouchScroll = (e) => {
+                if (!dragging) return;
+                e.preventDefault();
+            };
+
+            document.addEventListener('touchmove', preventTouchScroll, { passive: false });
+            window.addEventListener('touchmove', preventTouchScroll, { passive: false });
 
             const bindStart = (leader, leaderKey, followEl) => (e) => {
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -1635,6 +1674,7 @@
                 const followerPos = getPos(follower);
 
                 dragging = true;
+                setDragScrollLock(true);
                 moved = false;
                 startX = e.clientX;
                 startY = e.clientY;
@@ -1668,6 +1708,7 @@
             const onPointerEnd = (e) => {
                 if (!dragging || !activeLeader) return;
                 dragging = false;
+                setDragScrollLock(false);
                 activeLeader.classList.remove('dragging');
                 try { activeLeader.releasePointerCapture(e.pointerId); } catch (_) {}
 
