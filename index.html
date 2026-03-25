@@ -602,23 +602,224 @@
             console.error('Supabase initialization failed:', e);
         }
 
-        let state = {
-            scores: { girl: 0, boy: 0 },
-            dogClicks: { girl: 0, boy: 0 }, // 点击计数
-            accounts: { girl: null, boy: null }, // 账号 ID
-            nicknames: { girl: null, boy: null }, // 昵称
-            passwords: { girl: null, boy: null },
-            questions: { girl: null, boy: null },
-            answers: { girl: null, boy: null },
-            birthdays: { girl: null, boy: null }, // 生日
-            locations: { girl: { city: '未知', time: null }, boy: { city: '未知', time: null } }, 
-            tasks: [], wishes: [], wishlist: [], requests: [], history: [],
-            startDate: formatLocalDate(new Date()),
-            checkIns: {}, userEvents: {}, userNotes: {},
-            posts: []
-        };
+        const ROLE_KEYS = ['girl', 'boy'];
+        const ROLE_TEXT = { girl: '女生', boy: '男生' };
+        const ROLE_PROFILE_FIELDS = ['accounts', 'nicknames', 'passwords', 'questions', 'answers', 'birthdays'];
+
+        function createDefaultState() {
+            return {
+                scores: { girl: 0, boy: 0 },
+                dogClicks: { girl: 0, boy: 0 },
+                accounts: { girl: null, boy: null },
+                nicknames: { girl: null, boy: null },
+                passwords: { girl: null, boy: null },
+                questions: { girl: null, boy: null },
+                answers: { girl: null, boy: null },
+                birthdays: { girl: null, boy: null },
+                locations: {
+                    girl: { city: '未知', lat: null, lon: null, time: null },
+                    boy: { city: '未知', lat: null, lon: null, time: null }
+                },
+                tasks: [], wishes: [], wishlist: [], requests: [], history: [],
+                startDate: formatLocalDate(new Date()),
+                checkIns: {}, userEvents: {}, userNotes: {},
+                posts: []
+            };
+        }
+
+        function isPlainObject(value) {
+            return !!value && typeof value === 'object' && !Array.isArray(value);
+        }
+
+        function normalizeText(value) {
+            return typeof value === 'string' && value.trim() ? value.trim() : null;
+        }
+
+        function normalizeSecret(value) {
+            return typeof value === 'string' && value.length ? value : null;
+        }
+
+        function normalizeNumber(value) {
+
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : 0;
+        }
+
+        function normalizeLocation(value) {
+            const fallback = { city: '未知', lat: null, lon: null, time: null };
+            if (!isPlainObject(value)) return { ...fallback };
+            return {
+                city: normalizeText(value.city) || '未知',
+                lat: typeof value.lat === 'number' ? value.lat : null,
+                lon: typeof value.lon === 'number' ? value.lon : null,
+                time: normalizeText(value.time),
+            };
+        }
+
+        function hasCompleteRoleCredentials(snapshot, role) {
+            return !!(snapshot?.accounts?.[role] && snapshot?.passwords?.[role]);
+        }
+
+        function hasRecoveryData(snapshot, role) {
+            return !!(hasCompleteRoleCredentials(snapshot, role) && snapshot?.questions?.[role] && snapshot?.answers?.[role]);
+        }
+
+        function hasAnyRegisteredRole(snapshot = state) {
+            return ROLE_KEYS.some(role => hasCompleteRoleCredentials(snapshot, role));
+        }
+
+        function getDisplayName(role, snapshot = state) {
+            if (!role) return 'TA';
+            return snapshot?.nicknames?.[role] || snapshot?.accounts?.[role] || ROLE_TEXT[role] || 'TA';
+        }
+
+        function clearBrokenRoleData(snapshot, role) {
+            const hasAnyBrokenAuthField = ['accounts', 'passwords', 'questions', 'answers', 'birthdays']
+                .some(field => !!snapshot?.[field]?.[role]);
+            if (hasAnyBrokenAuthField && !hasCompleteRoleCredentials(snapshot, role)) {
+                snapshot.accounts[role] = null;
+                snapshot.passwords[role] = null;
+                snapshot.questions[role] = null;
+                snapshot.answers[role] = null;
+                snapshot.birthdays[role] = null;
+            }
+        }
+
+        function repairBrokenAccounts(snapshot) {
+            ROLE_KEYS.forEach(role => clearBrokenRoleData(snapshot, role));
+            return snapshot;
+        }
+
+        function normalizeState(rawState) {
+            const base = createDefaultState();
+            if (!isPlainObject(rawState)) return base;
+
+            const normalized = {
+                ...base,
+                scores: {
+                    girl: normalizeNumber(rawState.scores?.girl),
+                    boy: normalizeNumber(rawState.scores?.boy)
+                },
+                dogClicks: {
+                    girl: normalizeNumber(rawState.dogClicks?.girl),
+                    boy: normalizeNumber(rawState.dogClicks?.boy)
+                },
+                accounts: {
+                    girl: normalizeText(rawState.accounts?.girl),
+                    boy: normalizeText(rawState.accounts?.boy)
+                },
+                nicknames: {
+                    girl: normalizeText(rawState.nicknames?.girl),
+                    boy: normalizeText(rawState.nicknames?.boy)
+                },
+                passwords: {
+                    girl: normalizeSecret(rawState.passwords?.girl),
+                    boy: normalizeSecret(rawState.passwords?.boy)
+                },
+
+                questions: {
+                    girl: normalizeText(rawState.questions?.girl),
+                    boy: normalizeText(rawState.questions?.boy)
+                },
+                answers: {
+                    girl: normalizeText(rawState.answers?.girl),
+                    boy: normalizeText(rawState.answers?.boy)
+                },
+                birthdays: {
+                    girl: normalizeText(rawState.birthdays?.girl),
+                    boy: normalizeText(rawState.birthdays?.boy)
+                },
+                locations: {
+                    girl: normalizeLocation(rawState.locations?.girl),
+                    boy: normalizeLocation(rawState.locations?.boy)
+                },
+                tasks: Array.isArray(rawState.tasks) ? rawState.tasks : [],
+                wishes: Array.isArray(rawState.wishes) ? rawState.wishes : [],
+                wishlist: Array.isArray(rawState.wishlist) ? rawState.wishlist : [],
+                requests: Array.isArray(rawState.requests) ? rawState.requests : [],
+                history: Array.isArray(rawState.history) ? rawState.history : [],
+                startDate: normalizeText(rawState.startDate) || base.startDate,
+                checkIns: isPlainObject(rawState.checkIns) ? rawState.checkIns : {},
+                userEvents: isPlainObject(rawState.userEvents) ? rawState.userEvents : {},
+                userNotes: isPlainObject(rawState.userNotes) ? rawState.userNotes : {},
+                posts: Array.isArray(rawState.posts) ? rawState.posts : []
+            };
+
+            return repairBrokenAccounts(normalized);
+        }
+
+        function copyRoleProfile(target, source, role) {
+            ROLE_PROFILE_FIELDS.forEach(field => {
+                if (source?.[field]?.[role]) {
+                    target[field][role] = source[field][role];
+                }
+            });
+            if (source?.locations?.[role]) {
+                target.locations[role] = { ...target.locations[role], ...source.locations[role] };
+            }
+        }
+
+        function mergeStateForLoad(localState, cloudState) {
+            const merged = normalizeState(cloudState);
+
+            ['tasks', 'wishes', 'wishlist', 'requests', 'history', 'posts'].forEach(field => {
+                if (!merged[field].length && localState[field].length) {
+                    merged[field] = localState[field];
+                }
+            });
+
+            ['checkIns', 'userEvents', 'userNotes'].forEach(field => {
+                if (!Object.keys(merged[field]).length && Object.keys(localState[field]).length) {
+                    merged[field] = localState[field];
+                }
+            });
+
+            ROLE_KEYS.forEach(role => {
+                if (!hasCompleteRoleCredentials(merged, role) && hasCompleteRoleCredentials(localState, role)) {
+                    copyRoleProfile(merged, localState, role);
+                } else {
+                    if (!merged.nicknames[role] && localState.nicknames[role]) merged.nicknames[role] = localState.nicknames[role];
+                    if (!merged.birthdays[role] && localState.birthdays[role]) merged.birthdays[role] = localState.birthdays[role];
+                }
+
+                if (!merged.scores[role] && localState.scores[role]) merged.scores[role] = localState.scores[role];
+                if (!merged.dogClicks[role] && localState.dogClicks[role]) merged.dogClicks[role] = localState.dogClicks[role];
+                if (merged.locations[role].city === '未知' && localState.locations[role].city !== '未知') {
+                    merged.locations[role] = { ...merged.locations[role], ...localState.locations[role] };
+                }
+            });
+
+            if (!hasAnyRegisteredRole(cloudState) && localState.startDate) {
+                merged.startDate = localState.startDate;
+            }
+
+
+            return repairBrokenAccounts(merged);
+        }
+
+        function mergeStateForSync(localState, cloudState) {
+            const merged = normalizeState(localState);
+            ROLE_KEYS.forEach(role => {
+                if (!hasCompleteRoleCredentials(merged, role) && hasCompleteRoleCredentials(cloudState, role)) {
+                    copyRoleProfile(merged, cloudState, role);
+                } else {
+                    if (!merged.nicknames[role] && cloudState.nicknames[role]) merged.nicknames[role] = cloudState.nicknames[role];
+                    if (!merged.birthdays[role] && cloudState.birthdays[role]) merged.birthdays[role] = cloudState.birthdays[role];
+                }
+            });
+            return repairBrokenAccounts(merged);
+        }
+
+        function findRoleByAccount(account, snapshot = state) {
+            const normalizedAccount = normalizeText(account);
+            if (!normalizedAccount) return null;
+            return ROLE_KEYS.find(role => snapshot?.accounts?.[role] === normalizedAccount) || null;
+        }
+
+        let state = createDefaultState();
 
         let currentUser = null; // 当前登录的用户 (girl 或 boy)
+
 
         let viewDate = new Date();
         let editingDate = null;
@@ -649,46 +850,57 @@
         }
 
         async function loadData() {
-            let saved = localStorage.getItem(STORAGE_KEY);
-            
-            // --- 关键优化：先根据本地缓存和 Session 决定显示什么，避免闪现 ---
             const sessionUser = sessionStorage.getItem('current_user');
-            if (saved) {
-                state = JSON.parse(saved);
-            }
-            const hasRegisteredLocal = state.passwords && (state.passwords.girl || state.passwords.boy);
+            const saved = localStorage.getItem(STORAGE_KEY);
+            let localState = createDefaultState();
 
-            if (sessionUser && hasRegisteredLocal) {
+            if (saved) {
+                try {
+                    localState = normalizeState(JSON.parse(saved));
+                } catch (e) {
+                    console.warn('Local cache is invalid, reset to defaults.');
+                    localStorage.removeItem(STORAGE_KEY);
+                }
+            }
+
+            state = localState;
+
+            if (sessionUser && hasCompleteRoleCredentials(state, sessionUser)) {
                 currentUser = sessionUser;
                 document.body.className = `role-${currentUser} logged-in`;
                 renderAll();
-                // 此时已经可以显示内容了
                 document.body.classList.add('auth-ready');
                 updatePetVisibility();
             }
 
-            // --- 后台/后续同步远程数据 ---
             if (db) {
                 try {
                     const { data, error } = await db
                         .from('love_space')
                         .select('data')
                         .eq('id', 1)
-                        .single();
-                    if (data && data.data) {
-                        state = data.data;
+                        .maybeSingle();
+
+                    if (error) throw error;
+
+                    if (data?.data) {
+                        const cloudState = normalizeState(data.data);
+                        const mergedState = mergeStateForLoad(localState, cloudState);
+                        const needsCloudRepair = JSON.stringify(mergedState) !== JSON.stringify(cloudState);
+
+                        state = mergedState;
                         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-                        saved = JSON.stringify(state);
                         console.log('Data loaded from cloud');
-                        
-                        // 如果同步后的数据导致权限变更（例如另一端重置了），在这里处理
-                        const hasRegisteredCloud = state.passwords && (state.passwords.girl || state.passwords.boy);
-                        if (sessionUser && !hasRegisteredCloud) {
-                            handleLogout(); // 远程数据已被重置
-                            return;
+
+                        if (needsCloudRepair) {
+                            await db.from('love_space').upsert({ id: 1, data: state }, { onConflict: 'id' });
                         }
-                        
-                        // 重新渲染以更新可能存在的云端变动
+
+                        if (sessionUser && !hasCompleteRoleCredentials(state, sessionUser)) {
+                            currentUser = null;
+                            sessionStorage.removeItem('current_user');
+                        }
+
                         if (currentUser) {
                             renderAll();
                         }
@@ -698,11 +910,9 @@
                 }
             }
 
-            // 再次检查状态（针对第一次进入或未在上面处理的情况）
-            const hasRegistered = state.passwords && (state.passwords.girl || state.passwords.boy);
+            const hasRegistered = hasAnyRegisteredRole(state);
 
-            if (sessionUser && hasRegistered) {
-                // 已处理
+            if (sessionUser && hasCompleteRoleCredentials(state, sessionUser)) {
                 if (!state.dogClicks) state.dogClicks = { girl: 0, boy: 0 };
                 updateLocation();
             } else if (!hasRegistered) {
@@ -713,6 +923,7 @@
                 document.body.classList.add('auth-ready');
             }
         }
+
 
 
         function showLogin() {
@@ -754,8 +965,7 @@
                 setupCard.style.borderTop = '5px solid var(--blue-primary)';
             }
 
-            // 检查是否已经注册
-            if (state.passwords && state.passwords[role]) {
+            if (hasCompleteRoleCredentials(state, role)) {
                 document.getElementById('setup-hint').innerText = `⚠️ 该身份已被注册，只有一男一女两个账号哦`;
                 document.getElementById('setup-hint').style.color = '#ff4d4f';
                 document.getElementById('setup-btn').disabled = true;
@@ -768,21 +978,18 @@
             }
         }
 
+
         function handleLogin() {
             const acc = document.getElementById('login-account').value.trim();
             const pw = document.getElementById('login-pw').value;
 
             if (!acc || !pw) return alert('请输入账号和密码');
 
-            let role = null;
-            if (acc === state.accounts.girl) role = 'girl';
-            else if (acc === state.accounts.boy) role = 'boy';
-            else return alert('账号未找到，请检查名称或前往注册');
-
-            if (!state.passwords[role]) return alert('该身份尚未注册，请先注册');
+            const role = findRoleByAccount(acc);
+            if (!role) return alert('账号未找到，请检查名称或前往注册');
+            if (!hasCompleteRoleCredentials(state, role)) return alert('该账号数据不完整，请重新注册该身份');
             if (pw !== state.passwords[role]) return alert('密码错误');
 
-            // 登录成功
             currentUser = role;
             sessionStorage.setItem('current_user', role);
             localStorage.setItem('remembered_account', acc);
@@ -791,12 +998,13 @@
             updatePetVisibility();
             document.getElementById('login-overlay').style.display = 'none';
             renderAll();
-            updateLocation(); // 登录时获取一次位置
+            updateLocation();
             createHeartEffect();
         }
 
+
         function editNickname() {
-            const currentNick = state.nicknames[currentUser];
+            const currentNick = getDisplayName(currentUser);
             
             const newNick = prompt('修改你的昵称:', currentNick);
             if (newNick !== null && newNick.trim()) {
@@ -807,6 +1015,7 @@
                 createHeartEffect();
             }
         }
+
 
         function handleLogout() {
             currentUser = null;
@@ -824,6 +1033,7 @@
         }
 
         function saveData() { 
+            state = normalizeState(state);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
             syncToCloud();
         }
@@ -831,9 +1041,23 @@
         async function syncToCloud() {
             if (!db) return;
             try {
+                const localSnapshot = normalizeState(state);
+                const { data: cloudRow, error: readError } = await db
+                    .from('love_space')
+                    .select('data')
+                    .eq('id', 1)
+                    .maybeSingle();
+
+                if (readError) throw readError;
+
+                const cloudSnapshot = cloudRow?.data ? normalizeState(cloudRow.data) : createDefaultState();
+                const mergedState = mergeStateForSync(localSnapshot, cloudSnapshot);
+                state = mergedState;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
                 const { error } = await db
                     .from('love_space')
-                    .upsert({ id: 1, data: state }, { onConflict: 'id' });
+                    .upsert({ id: 1, data: mergedState }, { onConflict: 'id' });
                 
                 if (error) {
                     console.error('Cloud Sync Error:', error.message, error.details);
@@ -847,6 +1071,7 @@
                 console.error('Cloud Sync failed:', e);
             }
         }
+
 
         function handleRegister() {
             const role = document.querySelector('input[name="setup-role"]:checked').value;
@@ -869,18 +1094,16 @@
             if (!question) return alert('请选择或输入密保问题');
             if (!answer) return alert('请输入密保答案');
             
-            if (state.passwords[role]) {
+            if (hasCompleteRoleCredentials(state, role)) {
                 return alert('该身份已经注册过了，每个空间只能有一男一女哦');
             }
 
-            // 检查账号是否冲突
-            const otherRole = role === 'girl' ? 'boy' : 'girl';
-            if (state.accounts[otherRole] === account) {
+            const existingRole = findRoleByAccount(account);
+            if (existingRole && existingRole !== role) {
                 return alert('该账号已被另一半占用，请换一个');
             }
 
-            // 设置初始注册日期 (仅在第一个人注册时)
-            if (!state.passwords.girl && !state.passwords.boy) {
+            if (!hasAnyRegisteredRole(state)) {
                 state.startDate = formatLocalDate(new Date());
             }
 
@@ -891,14 +1114,14 @@
             state.questions[role] = question;
             state.answers[role] = answer;
             
-            // 初始化位置
-            if (!state.locations) state.locations = { girl: { city: '未知', time: null }, boy: { city: '未知', time: null } };
+            if (!state.locations) state.locations = createDefaultState().locations;
             state.locations[role] = { city: '未知', lat: null, lon: null, time: null };
             
             saveData();
             alert('注册成功！快去登录吧');
             showLogin();
         }
+
 
         function toggleCustomQuestion() {
             const select = document.getElementById('setup-question-select');
@@ -918,9 +1141,10 @@
             document.getElementById('desc-group').style.display = 'none';
             document.getElementById('evidence-group').style.display = 'none';
             
-            document.getElementById('modal-label-1').innerText = '请输入你的账号名称';
+            document.getElementById('modal-label-1').innerText = '请输入你的登录账号';
             document.getElementById('input-name').type = 'text';
-            document.getElementById('input-name').placeholder = '输入你的账号昵称';
+            document.getElementById('input-name').placeholder = '输入注册时填写的账号';
+
             document.getElementById('input-name').value = '';
             
             // 关键修复：设置 z-index 确保找回密码弹窗盖在登录遮罩之上
@@ -930,7 +1154,11 @@
         }
 
         function switchRole(role) {
-            // 已禁用手动切换，此函数仅供内部兼容使用
+            if (!hasCompleteRoleCredentials(state, role)) {
+                currentUser = null;
+                sessionStorage.removeItem('current_user');
+                return showLogin();
+            }
             currentUser = role;
             sessionStorage.setItem('current_user', role);
             document.body.className = `role-${role} auth-ready logged-in`;
@@ -938,6 +1166,7 @@
             renderAll(); 
             saveData();
         }
+
 
         function getSolarTerm(y, n) {
             const offDate = new Date((31556925974.7 * (y - 1900) + TERM_INFO[n] * 60000) + Date.UTC(1900, 0, 6, 2, 5));
@@ -1108,12 +1337,12 @@
         async function handleConfirm() {
             if (currentModalType === 'recovery_acc') {
                 const acc = document.getElementById('input-name').value.trim();
-                let role = null;
-                if (acc === state.accounts.girl) role = 'girl';
-                else if (acc === state.accounts.boy) role = 'boy';
-                else return alert('该账号不存在，请检查名称');
+                const role = findRoleByAccount(acc);
+                if (!role) return alert('该账号不存在，请检查名称');
 
-                if (!state.questions[role]) return alert('该账号未设置密保，无法找回');
+                if (!hasRecoveryData(state, role)) {
+                    return alert('该账号的密保或登录数据不完整，暂时无法找回，请重新注册该身份');
+                }
 
                 recoveryRole = role;
                 currentModalType = 'recovery_answer';
@@ -1134,6 +1363,7 @@
                 }
                 return;
             }
+
             if (currentModalType === 'day_edit') {
                 const y = editingDate.y, m = editingDate.m, d = editingDate.d;
                 const mm = String(m + 1).padStart(2, '0');
@@ -1156,21 +1386,22 @@
                 const isBoyPw = state.passwords.boy && inputPw === state.passwords.boy;
 
                 if (isGirlPw || isBoyPw) {
-                    if (confirm('⚠️ 警告：这将永久删除本地和云端的所有数据！\n此操作不可撤销，确定要执行吗？')) {
-                        // 1. 清除本地数据
+                    if (confirm('⚠️ 警告：这将永久清空整个恋爱空间的全部数据（女生、男生、本地缓存、云端数据库）。\n此操作不可撤销，确定要执行吗？')) {
+                        state = createDefaultState();
+                        currentUser = null;
+
                         localStorage.removeItem(STORAGE_KEY);
                         localStorage.removeItem('remembered_account');
                         sessionStorage.removeItem('current_user');
 
-                        // 2. 清除云端数据 (如果已配置)
                         if (db) {
                             try {
-                                const { error } = await db.from('love_space').delete().eq('id', 1);
+                                const { error } = await db.from('love_space').delete().gt('id', 0);
                                 if (error) {
                                     console.error('Cloud reset error:', error.message);
-                                    alert('本地已重置，但云端清理失败（错误：' + error.message + '），请手动检查 Supabase。');
+                                    alert('本地已重置，但云端整表清空失败（错误：' + error.message + '），请手动检查 Supabase。');
                                 } else {
-                                    console.log('Cloud record deleted successfully.');
+                                    console.log('Cloud table cleared successfully.');
                                 }
                             } catch (e) {
                                 console.error('Cloud reset exception:', e);
@@ -1178,15 +1409,15 @@
                             }
                         }
 
-                        // 3. 延迟一秒刷新，确保删除操作尽量完成（或者提示成功后再刷新）
-                        alert('系统数据已重置，页面即将刷新。');
+                        alert('全部数据已重置，页面即将刷新。');
                         location.reload();
                     }
                 } else {
-                    alert('密码错误，无法执行重置操作。');
+                    alert('密码错误，无法执行整库重置。');
                 }
                 return;
             }
+
             if (currentModalType === 'task_apply') {
                 const file = document.getElementById('input-file').files[0];
                 if (!file) return alert('请上传证据');
@@ -1393,17 +1624,22 @@
         }
 
         function renderAll() {
-            if (!currentUser) return showLogin();
+            if (!currentUser || !hasCompleteRoleCredentials(state, currentUser)) {
+                currentUser = null;
+                sessionStorage.removeItem('current_user');
+                return showLogin();
+            }
             
             renderDogClicks();
             const role = currentUser;
-            const nickname = state.nicknames[role] || state.accounts[role];
+            const nickname = getDisplayName(role);
             document.getElementById('role-nickname').innerText = nickname;
             animateScore(state.scores[role]); renderCalendar(); renderSpace();
             
-            updateWeather(); // 获取对方最后的位置和天气
+            updateWeather();
 
             const myRequests = state.requests.filter(r => r.targetRole === role);
+
             const reqSection = document.getElementById('request-section');
             if (myRequests.length > 0) {
                 reqSection.style.display = 'block';
@@ -1671,9 +1907,9 @@
             syncToAnchor();
             updatePetVisibility();
             window.addEventListener('resize', syncToAnchor);
-            window.addEventListener('scroll', syncToAnchor);
 
             const setDragScrollLock = (locked) => {
+
                 document.documentElement.classList.toggle('pet-dragging', locked);
                 document.body.classList.toggle('pet-dragging', locked);
             };
@@ -1706,10 +1942,17 @@
                 e.preventDefault();
             };
 
+            const preventWheelScroll = (e) => {
+                if (!dragging) return;
+                e.preventDefault();
+            };
+
             document.addEventListener('touchmove', preventTouchScroll, { passive: false });
             window.addEventListener('touchmove', preventTouchScroll, { passive: false });
+            window.addEventListener('wheel', preventWheelScroll, { passive: false });
 
             const bindStart = (leader, leaderKey, followEl) => (e) => {
+
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
                 e.preventDefault();
 
@@ -1824,9 +2067,10 @@
         function openResetModal() { 
             if (!currentUser) return alert('请先登录后再进行此操作');
             currentModalType = 'reset'; 
-            document.getElementById('modal-title').innerText = '重置确认'; 
-            document.getElementById('modal-label-1').innerText = '验证密码'; 
+            document.getElementById('modal-title').innerText = '整库重置确认'; 
+            document.getElementById('modal-label-1').innerText = '请输入任一已注册账号的密码以清空全部数据'; 
             document.getElementById('input-name').type = 'password'; 
+            document.getElementById('input-name').placeholder = '输入男生或女生账号密码';
             document.getElementById('input-name').value = '';
             document.getElementById('points-group').style.display = 'none'; 
             document.getElementById('desc-group').style.display = 'none'; 
@@ -1834,6 +2078,7 @@
             document.getElementById('day-detail').style.display = 'none'; 
             document.getElementById('modal-overlay').style.display = 'flex'; 
         }
+
         function openModal(type, id = null) {
             currentModalType = type; editingId = id;
             document.getElementById('modal-form').style.display = 'block';
