@@ -305,7 +305,15 @@
         .feature-box .section-title { color: rgba(0, 0, 0, 0.7); }
 
         @media (max-width: 480px) {
-            .score-value { font-size: 2rem; }
+            header { padding: 12px 12px 10px; gap: 10px; }
+            .logout-btn { right: 12px; top: 12px; padding: 5px 10px; font-size: 0.7rem; }
+            .score-label { font-size: 0.82rem; }
+            .score-value { font-size: 1.85rem; }
+            .header-top-actions { gap: 8px !important; }
+            .header-top-actions .checkin-btn { margin-top: 6px; padding: 7px 12px; font-size: 0.82rem; }
+            .weather-widget { margin-top: 10px; padding: 10px 12px; max-width: calc(100% - 24px); }
+            .dog-interaction { margin-top: 10px !important; padding: 2px 10px !important; }
+            #pet-origin-anchor { width: 24px !important; height: 0 !important; }
             .card { padding: 15px; flex-direction: column; align-items: flex-start; gap: 12px; }
             .card > div:last-child { width: 100%; display: flex; justify-content: space-between; align-items: center; }
         }
@@ -405,7 +413,7 @@
             <p class="score-label" onclick="editNickname()" style="cursor: pointer; text-decoration: underline dashed 1px; text-underline-offset: 4px;"><span id="role-nickname">小主</span> 的当前积分 ✎</p>
             <div class="score-value" id="current-score">0</div>
             
-            <div style="display: flex; gap: 10px; justify-content: center; align-items: center;">
+            <div class="header-top-actions" style="display: flex; gap: 10px; justify-content: center; align-items: center;">
                 <button id="checkin-btn" class="checkin-btn" onclick="handleCheckIn()">✨ 每日签到</button>
                 <a href="wishlist_reference.html" style="text-decoration: none;">
                     <button class="checkin-btn" style="background: rgba(255,255,255,0.5); color: var(--theme-text); border: 1px solid var(--theme-primary);">📜 参考手册</button>
@@ -425,9 +433,9 @@
             </div>
 
             <!-- 小狗点击互动模块占位（用于保持原始显示位置） -->
-            <div class="dog-interaction" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 20px auto 0; padding: 8px 20px; border-radius: 50px;">
+            <div class="dog-interaction" style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: 12px auto 0; padding: 4px 12px; border-radius: 50px;">
                 <span class="click-count count-girl" id="dog-count-girl">0</span>
-                <div id="pet-origin-anchor" style="width: 184px; height: 96px;"></div>
+                <div id="pet-origin-anchor" style="width: 36px; height: 0;"></div>
                 <span class="click-count count-boy" id="dog-count-boy">0</span>
             </div>
         </div>
