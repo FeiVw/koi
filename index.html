@@ -586,21 +586,76 @@
         const HOLIDAYS = { "0101": "元旦", "0214": "情人节", "0501": "劳动节", "0504": "青年节", "0520": "520告白日", "0601": "儿童节", "1001": "国庆节", "1225": "圣诞节" };
         const ANNIVERSARY_DAYS = [30, 50, 100, 520, 666, 888, 1314];
 
-        const STORAGE_KEY = 'love_token_data_v11';
-        
-        // --- Supabase 配置 (请在此处填入你的 Supabase 信息) ---
-        // 你只需要在 Supabase 创建一个项目，然后在 Table Editor 创建一个名为 'love_space' 的表
-        // 表结构只需一列: id (int8, primary key), data (jsonb)
-        const SUPABASE_URL = 'https://temnlixvbacnutlannpl.supabase.co'; // 你的 Supabase URL
-        const SUPABASE_KEY = 'sb_publishable_PguacP_AwHD85XiNXL9ZqQ_39Qi5kOQ'; // 你的 Supabase Anon Key
+        const DATABASE_CONFIG = Object.freeze({
+            url: 'https://temnlixvbacnutlannpl.supabase.co',
+            anonKey: 'sb_publishable_PguacP_AwHD85XiNXL9ZqQ_39Qi5kOQ',
+            schema: 'public',
+            table: 'love_space',
+            rowId: 1
+        });
+
         let db = null;
-        try {
-            if (SUPABASE_URL && SUPABASE_KEY) {
-                db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        function getDatabaseClient() {
+            if (db) return db;
+
+            const { url, anonKey, schema } = DATABASE_CONFIG;
+            if (!url || !anonKey) {
+                console.error('Supabase 配置缺失，请检查 DATABASE_CONFIG。');
+                return null;
             }
-        } catch (e) {
-            console.error('Supabase initialization failed:', e);
+            if (!window.supabase?.createClient) {
+                console.error('Supabase SDK 未加载，无法初始化数据库客户端。');
+                return null;
+            }
+
+            try {
+                db = supabase.createClient(url, anonKey, {
+                    auth: {
+                        persistSession: false,
+                        autoRefreshToken: false
+                    },
+                    db: { schema }
+                });
+            } catch (e) {
+                console.error('Supabase initialization failed:', e);
+                db = null;
+            }
+
+            return db;
         }
+
+        async function ensureDatabaseInitialized() {
+            const client = getDatabaseClient();
+            if (!client) return false;
+
+            try {
+                const { data, error } = await client
+                    .from(DATABASE_CONFIG.table)
+                    .select('data')
+                    .eq('id', DATABASE_CONFIG.rowId)
+                    .maybeSingle();
+
+                if (error) throw error;
+                if (data?.data && !isEmptyDatabaseState(data.data)) return true;
+
+                const initialState = normalizeState(createDefaultState());
+                const { error: initError } = await client
+                    .from(DATABASE_CONFIG.table)
+                    .upsert({ id: DATABASE_CONFIG.rowId, data: initialState }, { onConflict: 'id' });
+
+                if (initError) throw initError;
+                console.log('Database bootstrap row initialized.');
+                return true;
+            } catch (e) {
+                console.error('Database initialization failed:', e);
+                return false;
+            }
+        }
+
+
+        db = getDatabaseClient();
+
 
         const ROLE_KEYS = ['girl', 'boy'];
         const ROLE_TEXT = { girl: '女生', boy: '男生' };
@@ -666,36 +721,7 @@
             };
         }
 
-        function hasUsefulLocation(location) {
-            return !!location && (
-                location.city !== '未知' ||
-                location.lat !== null ||
-                location.lon !== null ||
-                location.time !== null
-            );
-        }
 
-        function mergeLocationEntry(localLocation, cloudLocation, preferredSource = 'newer') {
-            const local = normalizeLocation(localLocation);
-            const cloud = normalizeLocation(cloudLocation);
-            const localHas = hasUsefulLocation(local);
-            const cloudHas = hasUsefulLocation(cloud);
-
-            if (!localHas && !cloudHas) return { ...cloud };
-            if (!localHas) return { ...cloud };
-            if (!cloudHas) return { ...local };
-
-            const localTime = local.time || 0;
-            const cloudTime = cloud.time || 0;
-
-            if (preferredSource === 'local') {
-                return localTime >= cloudTime || !cloudTime ? { ...local } : { ...cloud };
-            }
-            if (preferredSource === 'cloud') {
-                return cloudTime >= localTime || !localTime ? { ...cloud } : { ...local };
-            }
-            return localTime >= cloudTime ? { ...local } : { ...cloud };
-        }
 
 
         function hasCompleteRoleCredentials(snapshot, role) {
@@ -790,68 +816,11 @@
             return repairBrokenAccounts(normalized);
         }
 
-        function copyRoleProfile(target, source, role) {
-            ROLE_PROFILE_FIELDS.forEach(field => {
-                if (source?.[field]?.[role]) {
-                    target[field][role] = source[field][role];
-                }
-            });
-            if (source?.locations?.[role]) {
-                target.locations[role] = { ...target.locations[role], ...source.locations[role] };
-            }
+
+
+        function isEmptyDatabaseState(value) {
+            return !isPlainObject(value) || Object.keys(value).length === 0;
         }
-
-        function mergeStateForLoad(localState, cloudState) {
-            const merged = normalizeState(cloudState);
-
-            ['tasks', 'wishes', 'wishlist', 'history', 'posts'].forEach(field => {
-                if (!merged[field].length && localState[field].length) {
-                    merged[field] = localState[field];
-                }
-            });
-
-            ['checkIns', 'userEvents', 'userNotes'].forEach(field => {
-                if (!Object.keys(merged[field]).length && Object.keys(localState[field]).length) {
-                    merged[field] = localState[field];
-                }
-            });
-
-            ROLE_KEYS.forEach(role => {
-                if (!hasCompleteRoleCredentials(merged, role) && hasCompleteRoleCredentials(localState, role)) {
-                    copyRoleProfile(merged, localState, role);
-                } else {
-                    if (!merged.nicknames[role] && localState.nicknames[role]) merged.nicknames[role] = localState.nicknames[role];
-                    if (!merged.birthdays[role] && localState.birthdays[role]) merged.birthdays[role] = localState.birthdays[role];
-                }
-
-                if (!merged.scores[role] && localState.scores[role]) merged.scores[role] = localState.scores[role];
-                if (!merged.dogClicks[role] && localState.dogClicks[role]) merged.dogClicks[role] = localState.dogClicks[role];
-                merged.locations[role] = mergeLocationEntry(localState.locations[role], cloudState.locations[role]);
-            });
-
-            if (!hasAnyRegisteredRole(cloudState) && localState.startDate) {
-                merged.startDate = localState.startDate;
-            }
-
-            return repairBrokenAccounts(merged);
-        }
-
-        function mergeStateForSync(localState, cloudState, actorRole = currentUser) {
-            const merged = normalizeState(localState);
-            ROLE_KEYS.forEach(role => {
-                if (!hasCompleteRoleCredentials(merged, role) && hasCompleteRoleCredentials(cloudState, role)) {
-                    copyRoleProfile(merged, cloudState, role);
-                } else {
-                    if (!merged.nicknames[role] && cloudState.nicknames[role]) merged.nicknames[role] = cloudState.nicknames[role];
-                    if (!merged.birthdays[role] && cloudState.birthdays[role]) merged.birthdays[role] = cloudState.birthdays[role];
-                }
-
-                const locationPreference = actorRole ? (role === actorRole ? 'local' : 'cloud') : 'newer';
-                merged.locations[role] = mergeLocationEntry(localState.locations[role], cloudState.locations[role], locationPreference);
-            });
-            return repairBrokenAccounts(merged);
-        }
-
 
         function findRoleByAccount(account, snapshot = state) {
             const normalizedAccount = normalizeText(account);
@@ -892,93 +861,82 @@
             }).format(d).replace(/\//g, '-');
         }
 
-        async function loadData() {
-            const sessionUser = sessionStorage.getItem('current_user');
-            const saved = localStorage.getItem(STORAGE_KEY);
-            let localState = createDefaultState();
+        function cloneStateSnapshot(snapshot = state) {
+            return normalizeState(JSON.parse(JSON.stringify(normalizeState(snapshot))));
+        }
 
-            if (saved) {
-                try {
-                    localState = normalizeState(JSON.parse(saved));
-                } catch (e) {
-                    console.warn('Local cache is invalid, reset to defaults.');
-                    localStorage.removeItem(STORAGE_KEY);
-                }
+        async function fetchStateFromDatabase() {
+            const client = getDatabaseClient();
+            if (!client) throw new Error('数据库未连接。');
+
+            const { data, error } = await client
+                .from(DATABASE_CONFIG.table)
+                .select('data')
+                .eq('id', DATABASE_CONFIG.rowId)
+                .maybeSingle();
+
+            if (error) throw error;
+            if (!data?.data || isEmptyDatabaseState(data.data)) {
+                throw new Error('数据库中未找到完整主数据记录。');
             }
 
-            state = localState;
+            return normalizeState(data.data);
+        }
 
-            if (sessionUser && hasCompleteRoleCredentials(state, sessionUser)) {
-                currentUser = sessionUser;
-                document.body.className = `role-${currentUser} logged-in`;
-                renderAll();
-                document.body.classList.add('auth-ready');
-                updatePetVisibility();
-            }
+        async function syncStateFromDatabase({ preserveCurrentUser = true, silent = false } = {}) {
+            const previousUser = preserveCurrentUser ? currentUser : null;
 
-            if (db) {
-                try {
-                    const { data, error } = await db
-                        .from('love_space')
-                        .select('data')
-                        .eq('id', 1)
-                        .maybeSingle();
-
-                    if (error) throw error;
-
-                    if (data?.data) {
-                        const cloudState = normalizeState(data.data);
-                        const mergedState = mergeStateForLoad(localState, cloudState);
-                        const needsCloudRepair = JSON.stringify(mergedState) !== JSON.stringify(cloudState);
-
-                        state = mergedState;
-                        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-                        console.log('Data loaded from cloud');
-
-                        if (needsCloudRepair) {
-                            await db.from('love_space').upsert({ id: 1, data: state }, { onConflict: 'id' });
-                        }
-
-                        if (sessionUser && !hasCompleteRoleCredentials(state, sessionUser)) {
-                            currentUser = null;
-                            sessionStorage.removeItem('current_user');
-                        }
-
-                        if (currentUser) {
-                            renderAll();
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Could not load from cloud, using local storage.');
-                }
-            }
-
-            const hasRegistered = hasAnyRegisteredRole(state);
-
-            if (sessionUser && hasCompleteRoleCredentials(state, sessionUser)) {
-                if (!state.dogClicks) state.dogClicks = { girl: 0, boy: 0 };
-                updateLocation();
-            } else if (!hasRegistered) {
-                showSetup();
-                document.body.classList.add('auth-ready');
-            } else {
-                showLogin();
-                document.body.classList.add('auth-ready');
+            try {
+                state = await fetchStateFromDatabase();
+                currentUser = previousUser && hasCompleteRoleCredentials(state, previousUser) ? previousUser : null;
+                return state;
+            } catch (e) {
+                if (!silent) console.error('Database read failed:', e);
+                if (!preserveCurrentUser) currentUser = null;
+                return null;
             }
         }
 
+        async function loadData() {
+            currentUser = null;
 
+            const client = getDatabaseClient();
+            if (!client) {
+                console.error('数据库未连接，当前版本仅支持数据库读写。');
+                alert('数据库未连接，当前版本仅支持数据库读写，请检查 Supabase 配置。');
+                document.body.classList.add('auth-ready');
+                return showLogin();
+            }
+
+            const initialized = await ensureDatabaseInitialized();
+            if (!initialized) {
+                alert('数据库初始化失败，请检查 Supabase 表结构、RLS 策略和网络连接。');
+                document.body.classList.add('auth-ready');
+                return showLogin();
+            }
+
+            const latestState = await syncStateFromDatabase({ preserveCurrentUser: false, silent: true });
+            if (!latestState) {
+                alert('数据库读取失败，请检查网络或 Supabase 配置。');
+                document.body.classList.add('auth-ready');
+                return showLogin();
+            }
+
+            if (!hasAnyRegisteredRole(latestState)) {
+                showSetup();
+            } else {
+                showLogin();
+            }
+            document.body.classList.add('auth-ready');
+        }
 
         function showLogin() {
             document.body.classList.remove('logged-in');
             updatePetVisibility();
             document.getElementById('login-overlay').style.display = 'flex';
             document.getElementById('setup-overlay').style.display = 'none';
-            // 回填记忆的账号
-            const rememberedAccount = localStorage.getItem('remembered_account');
-            if (rememberedAccount) {
-                document.getElementById('login-account').value = rememberedAccount;
-            }
+            document.getElementById('login-account').value = '';
+            document.getElementById('login-pw').value = '';
         }
 
         function showSetup() {
@@ -1021,22 +979,21 @@
             }
         }
 
-
-        function handleLogin() {
+        async function handleLogin() {
             const acc = document.getElementById('login-account').value.trim();
             const pw = document.getElementById('login-pw').value;
 
             if (!acc || !pw) return alert('请输入账号和密码');
 
-            const role = findRoleByAccount(acc);
+            const latestState = await syncStateFromDatabase({ preserveCurrentUser: false, silent: true });
+            if (!latestState) return alert('数据库读取失败，请检查网络或 Supabase 配置。');
+
+            const role = findRoleByAccount(acc, latestState);
             if (!role) return alert('账号未找到，请检查名称或前往注册');
-            if (!hasCompleteRoleCredentials(state, role)) return alert('该账号数据不完整，请重新注册该身份');
-            if (pw !== state.passwords[role]) return alert('密码错误');
+            if (!hasCompleteRoleCredentials(latestState, role)) return alert('该账号数据不完整，请重新注册该身份');
+            if (pw !== latestState.passwords[role]) return alert('密码错误');
 
             currentUser = role;
-            sessionStorage.setItem('current_user', role);
-            localStorage.setItem('remembered_account', acc);
-            
             document.body.className = `role-${role} auth-ready logged-in`;
             updatePetVisibility();
             document.getElementById('login-overlay').style.display = 'none';
@@ -1045,24 +1002,24 @@
             createHeartEffect();
         }
 
-
-        function editNickname() {
+        async function editNickname() {
             const currentNick = getDisplayName(currentUser);
-            
             const newNick = prompt('修改你的昵称:', currentNick);
-            if (newNick !== null && newNick.trim()) {
-                state.nicknames[currentUser] = newNick.trim();
-                addHistory(`${currentNick} 将昵称修改为了 ${newNick.trim()}`);
-                saveData();
-                renderAll();
-                createHeartEffect();
-            }
-        }
+            const trimmedNick = newNick?.trim();
 
+            if (!trimmedNick) return;
+
+            const saved = await commitStateChange((draft) => {
+                draft.nicknames[currentUser] = trimmedNick;
+                appendHistoryEntry(draft, `${currentNick} 将昵称修改为了 ${trimmedNick}`);
+            }, { errorMessage: '昵称保存失败，请稍后重试。' });
+
+            if (!saved) return;
+            createHeartEffect();
+        }
 
         function handleLogout() {
             currentUser = null;
-            sessionStorage.removeItem('current_user');
             location.reload();
         }
 
@@ -1075,49 +1032,75 @@
             }
         }
 
-        function saveData() { 
-            state = normalizeState(state);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); 
-            return syncToCloud();
+        async function saveData(nextState = state) {
+            const snapshot = normalizeState(nextState);
+            const client = getDatabaseClient();
+            if (!client) {
+                console.error('数据库未连接，无法保存数据。');
+                alert('数据库未连接，无法保存数据。');
+                return null;
+            }
+
+            try {
+                const { error } = await client
+                    .from(DATABASE_CONFIG.table)
+                    .upsert({ id: DATABASE_CONFIG.rowId, data: snapshot }, { onConflict: 'id' });
+
+                if (error) {
+                    console.error('Database sync error:', error.message, error.details);
+                    if (error.code === '42P01') {
+                        console.error(`错误：${DATABASE_CONFIG.table} 表不存在，请在 Supabase SQL Editor 执行建表脚本。`);
+                    }
+                    return null;
+                }
+
+                const freshState = await fetchStateFromDatabase();
+                state = freshState;
+                console.log('Database sync success');
+                return freshState;
+            } catch (e) {
+                console.error('Database sync failed:', e);
+                return null;
+            }
         }
 
-        async function syncToCloud() {
-            if (!db) return;
+        async function commitStateChange(mutator, { render = true, errorMessage = '数据库写入失败，请稍后重试。' } = {}) {
+            const activeUser = currentUser;
+
             try {
-                const localSnapshot = normalizeState(state);
-                const { data: cloudRow, error: readError } = await db
-                    .from('love_space')
-                    .select('data')
-                    .eq('id', 1)
-                    .maybeSingle();
+                const latestState = await fetchStateFromDatabase();
+                const draft = cloneStateSnapshot(latestState);
+                const result = await mutator(draft, latestState);
+                const savedState = await saveData(draft);
 
-                if (readError) throw readError;
-
-                const cloudSnapshot = cloudRow?.data ? normalizeState(cloudRow.data) : createDefaultState();
-                const mergedState = mergeStateForSync(localSnapshot, cloudSnapshot, currentUser);
-
-                state = mergedState;
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-
-                const { error } = await db
-                    .from('love_space')
-                    .upsert({ id: 1, data: mergedState }, { onConflict: 'id' });
-                
-                if (error) {
-                    console.error('Cloud Sync Error:', error.message, error.details);
-                    if (error.code === '42P01') {
-                        console.error('错误：love_space 表不存在，请在 Supabase SQL Editor 执行建表脚本。');
-                    }
-                } else {
-                    console.log('Cloud Sync Success');
+                if (!savedState) {
+                    throw new Error('数据库写入失败');
                 }
+
+                currentUser = activeUser && hasCompleteRoleCredentials(savedState, activeUser) ? activeUser : null;
+
+                if (render) {
+                    if (currentUser) {
+                        renderAll();
+                    } else if (hasAnyRegisteredRole(savedState)) {
+                        showLogin();
+                    } else {
+                        showSetup();
+                    }
+                }
+
+                return { state: savedState, result };
             } catch (e) {
-                console.error('Cloud Sync failed:', e);
+                console.error('Database mutation failed:', e);
+                alert(errorMessage);
+                return null;
             }
         }
 
 
-        function handleRegister() {
+
+
+        async function handleRegister() {
             const role = document.querySelector('input[name="setup-role"]:checked').value;
             const account = document.getElementById('setup-account').value.trim();
             const nickname = document.getElementById('setup-nickname').value.trim();
@@ -1137,35 +1120,37 @@
             if (!pw1 || pw1 !== pw2) return alert('请确保密码一致');
             if (!question) return alert('请选择或输入密保问题');
             if (!answer) return alert('请输入密保答案');
-            
-            if (hasCompleteRoleCredentials(state, role)) {
+
+            const latestState = await syncStateFromDatabase({ preserveCurrentUser: false, silent: true });
+            if (!latestState) return alert('数据库读取失败，请稍后重试。');
+            if (hasCompleteRoleCredentials(latestState, role)) {
                 return alert('该身份已经注册过了，每个空间只能有一男一女哦');
             }
 
-            const existingRole = findRoleByAccount(account);
+            const existingRole = findRoleByAccount(account, latestState);
             if (existingRole && existingRole !== role) {
                 return alert('该账号已被另一半占用，请换一个');
             }
 
-            if (!hasAnyRegisteredRole(state)) {
-                state.startDate = formatLocalDate(new Date());
+            const nextState = cloneStateSnapshot(latestState);
+            if (!hasAnyRegisteredRole(nextState)) {
+                nextState.startDate = formatLocalDate(new Date());
             }
 
-            state.accounts[role] = account;
-            state.nicknames[role] = nickname;
-            state.birthdays[role] = birthday;
-            state.passwords[role] = pw1;
-            state.questions[role] = question;
-            state.answers[role] = answer;
-            
-            if (!state.locations) state.locations = createDefaultState().locations;
-            state.locations[role] = { city: '未知', lat: null, lon: null, time: null };
-            
-            saveData();
+            nextState.accounts[role] = account;
+            nextState.nicknames[role] = nickname;
+            nextState.birthdays[role] = birthday;
+            nextState.passwords[role] = pw1;
+            nextState.questions[role] = question;
+            nextState.answers[role] = answer;
+            nextState.locations[role] = { city: '未知', lat: null, lon: null, time: null };
+
+            const savedState = await saveData(nextState);
+            if (!savedState) return alert('注册失败，请稍后重试。');
+
             alert('注册成功！快去登录吧');
             showLogin();
         }
-
 
         function toggleCustomQuestion() {
             const select = document.getElementById('setup-question-select');
@@ -1174,7 +1159,10 @@
         }
 
         let recoveryRole = null;
-        function showRecoveryModal() {
+        async function showRecoveryModal() {
+            const latestState = await syncStateFromDatabase({ preserveCurrentUser: true, silent: true });
+            if (!latestState) return alert('数据库读取失败，请稍后重试。');
+
             currentModalType = 'recovery_acc';
             document.getElementById('modal-title').innerText = '找回密码 (1/2)';
             document.getElementById('modal-form').style.display = 'block';
@@ -1188,28 +1176,26 @@
             document.getElementById('modal-label-1').innerText = '请输入你的登录账号';
             document.getElementById('input-name').type = 'text';
             document.getElementById('input-name').placeholder = '输入注册时填写的账号';
-
             document.getElementById('input-name').value = '';
             
-            // 关键修复：设置 z-index 确保找回密码弹窗盖在登录遮罩之上
             const modalOverlay = document.getElementById('modal-overlay');
             modalOverlay.style.zIndex = '3000'; 
             modalOverlay.style.display = 'flex';
         }
 
-        function switchRole(role) {
-            if (!hasCompleteRoleCredentials(state, role)) {
+        async function switchRole(role) {
+            const latestState = await syncStateFromDatabase({ preserveCurrentUser: true, silent: true });
+            if (!latestState) return alert('数据库读取失败，请稍后重试。');
+            if (!hasCompleteRoleCredentials(latestState, role)) {
                 currentUser = null;
-                sessionStorage.removeItem('current_user');
                 return showLogin();
             }
             currentUser = role;
-            sessionStorage.setItem('current_user', role);
             document.body.className = `role-${role} auth-ready logged-in`;
             updatePetVisibility();
-            renderAll(); 
-            saveData();
+            renderAll();
         }
+
 
 
         function getSolarTerm(y, n) {
@@ -1359,48 +1345,73 @@
             document.getElementById('modal-overlay').style.display = 'flex';
         }
 
-        function handleCheckIn() {
+        async function handleCheckIn() {
             if (!currentUser) return showLogin();
+
             const today = getShanghaiDate();
             const todayStr = today.yyyymmdd;
-            if (state.checkIns[todayStr] && state.checkIns[todayStr].includes(currentUser)) return;
-            
-            const events = getEventsForDate(today.year, today.month, today.day);
-            const isSpecial = events.some(e => e.type === 'system');
-            const points = isSpecial ? 3 : 1;
-            
-            state.scores[currentUser] += points;
-            if (!state.checkIns[todayStr]) state.checkIns[todayStr] = [];
-            state.checkIns[todayStr].push(currentUser);
-            
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-            addHistory(`${nickname} 签到成功，获得 ${points} 积分${isSpecial ? ' (纪念日奖励!)' : ''}`);
-            createHeartEffect(); renderAll(); saveData();
+            const saved = await commitStateChange((draft) => {
+                if (draft.checkIns[todayStr] && draft.checkIns[todayStr].includes(currentUser)) {
+                    return { skipped: true };
+                }
+
+                const previousState = state;
+                let events = [];
+                try {
+                    state = draft;
+                    events = getEventsForDate(today.year, today.month, today.day);
+                } finally {
+                    state = previousState;
+                }
+
+
+                const isSpecial = events.some(e => e.type === 'system');
+                const points = isSpecial ? 3 : 1;
+                draft.scores[currentUser] += points;
+                if (!draft.checkIns[todayStr]) draft.checkIns[todayStr] = [];
+                draft.checkIns[todayStr].push(currentUser);
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                appendHistoryEntry(draft, `${nickname} 签到成功，获得 ${points} 积分${isSpecial ? ' (纪念日奖励!)' : ''}`);
+                return { skipped: false };
+            }, { errorMessage: '签到失败，请稍后重试。' });
+
+            if (!saved || saved.result?.skipped) return;
+            createHeartEffect();
         }
 
         async function handleConfirm() {
             if (currentModalType === 'recovery_acc') {
                 const acc = document.getElementById('input-name').value.trim();
-                const role = findRoleByAccount(acc);
-                if (!role) return alert('该账号不存在，请检查名称');
+                const latestState = await syncStateFromDatabase({ preserveCurrentUser: true, silent: true });
+                if (!latestState) return alert('数据库读取失败，请稍后重试。');
 
-                if (!hasRecoveryData(state, role)) {
+                const role = findRoleByAccount(acc, latestState);
+                if (!role) return alert('该账号不存在，请检查名称');
+                if (!hasRecoveryData(latestState, role)) {
                     return alert('该账号的密保或登录数据不完整，暂时无法找回，请重新注册该身份');
                 }
 
                 recoveryRole = role;
                 currentModalType = 'recovery_answer';
                 document.getElementById('modal-title').innerHTML = '<span style="color: var(--theme-primary)">找回密码</span> <small style="font-size: 0.8rem; opacity: 0.5;">(第二步: 验证密保)</small>';
-                document.getElementById('modal-label-1').innerHTML = `<span style="font-size: 0.85rem; color: #666;">密保问题：</span><br>${state.questions[role]}`;
+                document.getElementById('modal-label-1').innerHTML = `<span style="font-size: 0.85rem; color: #666;">密保问题：</span><br>${latestState.questions[role]}`;
                 document.getElementById('input-name').value = '';
                 document.getElementById('input-name').placeholder = '请输入你的密保答案';
                 document.getElementById('modal-confirm-btn').innerText = '提交答案';
                 return;
             }
+
             if (currentModalType === 'recovery_answer') {
                 const ans = document.getElementById('input-name').value.trim();
-                if (ans === state.answers[recoveryRole]) {
-                    alert(`找回成功！你的账号是: ${state.accounts[recoveryRole]}，密码是: ${state.passwords[recoveryRole]}`);
+                const latestState = await syncStateFromDatabase({ preserveCurrentUser: true, silent: true });
+                if (!latestState) return alert('数据库读取失败，请稍后重试。');
+                if (!recoveryRole || !hasRecoveryData(latestState, recoveryRole)) {
+                    return alert('找回信息已失效，请重新开始。');
+                }
+
+                if (ans === latestState.answers[recoveryRole]) {
+                    alert(`找回成功！你的账号是: ${latestState.accounts[recoveryRole]}，密码是: ${latestState.passwords[recoveryRole]}`);
                     closeModal();
                 } else {
                     alert('答案错误，请仔细回忆');
@@ -1416,49 +1427,45 @@
                 const yyyymmdd = `${y}-${mm}-${ddStr}`;
                 const eventVal = document.getElementById('day-event-input').value.trim();
                 const noteVal = document.getElementById('day-note-input').value.trim();
-                
-                if (eventVal) state.userEvents[mmdd] = eventVal; else delete state.userEvents[mmdd];
-                if (noteVal) state.userNotes[yyyymmdd] = noteVal; else delete state.userNotes[yyyymmdd];
-                
-                const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-                addHistory(`${nickname} 更新了 ${m + 1}月${d}日 的纪念日/备注`);
-                renderAll(); saveData(); closeModal(); return;
+
+                const saved = await commitStateChange((draft) => {
+                    if (eventVal) draft.userEvents[mmdd] = eventVal; else delete draft.userEvents[mmdd];
+                    if (noteVal) draft.userNotes[yyyymmdd] = noteVal; else delete draft.userNotes[yyyymmdd];
+
+                    const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                    appendHistoryEntry(draft, `${nickname} 更新了 ${m + 1}月${d}日 的纪念日/备注`);
+                }, { errorMessage: '纪念日保存失败，请稍后重试。' });
+
+                if (!saved) return;
+                closeModal();
+                return;
             }
+
             if (currentModalType === 'reset') {
                 const inputPw = document.getElementById('input-name').value;
-                const isGirlPw = state.passwords.girl && inputPw === state.passwords.girl;
-                const isBoyPw = state.passwords.boy && inputPw === state.passwords.boy;
+                const latestState = await syncStateFromDatabase({ preserveCurrentUser: true, silent: true });
+                if (!latestState) return alert('数据库读取失败，请稍后重试。');
 
-                if (isGirlPw || isBoyPw) {
-                    if (confirm('⚠️ 警告：这将永久清空整个恋爱空间的全部数据（女生、男生、本地缓存、云端数据库）。\n此操作不可撤销，确定要执行吗？')) {
-                        state = createDefaultState();
-                        currentUser = null;
+                const isGirlPw = latestState.passwords.girl && inputPw === latestState.passwords.girl;
+                const isBoyPw = latestState.passwords.boy && inputPw === latestState.passwords.boy;
 
-                        localStorage.removeItem(STORAGE_KEY);
-                        localStorage.removeItem('remembered_account');
-                        sessionStorage.removeItem('current_user');
-
-                        if (db) {
-                            try {
-                                const { error } = await db.from('love_space').delete().gt('id', 0);
-                                if (error) {
-                                    console.error('Cloud reset error:', error.message);
-                                    alert('本地已重置，但云端整表清空失败（错误：' + error.message + '），请手动检查 Supabase。');
-                                } else {
-                                    console.log('Cloud table cleared successfully.');
-                                }
-                            } catch (e) {
-                                console.error('Cloud reset exception:', e);
-                                alert('本地已重置，但连接服务器失败，云端数据可能残留。');
-                            }
-                        }
-
-                        alert('全部数据已重置，页面即将刷新。');
-                        location.reload();
-                    }
-                } else {
+                if (!isGirlPw && !isBoyPw) {
                     alert('密码错误，无法执行整库重置。');
+                    return;
                 }
+                if (!confirm('⚠️ 警告：这将永久清空整个恋爱空间的全部数据（女生、男生、云端数据库）。\n此操作不可撤销，确定要执行吗？')) {
+                    return;
+                }
+
+                const resetState = await saveData(createDefaultState());
+                if (!resetState) {
+                    alert('数据库重置失败，请稍后重试。');
+                    return;
+                }
+
+                currentUser = null;
+                alert('全部数据已重置，页面即将刷新。');
+                location.reload();
                 return;
             }
 
@@ -1466,15 +1473,24 @@
                 const file = document.getElementById('input-file').files[0];
                 if (!file) return alert('请上传证据');
                 const reader = new FileReader();
-                reader.onload = (e) => {
-                    const task = state.tasks.find(t => t.id === editingId);
-                    const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-                    state.requests.push({ id: Date.now(), type: 'task', name: task.name, points: task.points, desc: task.desc, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl', image: e.target.result });
-                    addHistory(`${nickname} 提交了任务 ${task.name} 的完成申请`);
-                    renderAll(); saveData(); closeModal(); alert('申请已发送');
+                reader.onload = async (e) => {
+                    const saved = await commitStateChange((draft) => {
+                        const task = draft.tasks.find(t => t.id === editingId);
+                        if (!task) throw new Error('任务不存在');
+
+                        const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                        draft.requests.push({ id: Date.now(), type: 'task', name: task.name, points: task.points, desc: task.desc, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl', image: e.target.result });
+                        appendHistoryEntry(draft, `${nickname} 提交了任务 ${task.name} 的完成申请`);
+                    }, { errorMessage: '申请发送失败，请稍后重试。' });
+
+                    if (!saved) return;
+                    closeModal();
+                    alert('申请已发送');
                 };
-                reader.readAsDataURL(file); return;
+                reader.readAsDataURL(file);
+                return;
             }
+
             if (currentModalType === 'space_post') {
                 const title = document.getElementById('input-name').value.trim();
                 const content = document.getElementById('input-desc').value.trim();
@@ -1483,20 +1499,24 @@
                 
                 if (!content && !file && !title) return alert('写点什么或发张图吧');
 
-                const createPostData = (img = null) => {
-                    const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-                    state.posts.push({
-                        id: Date.now(),
-                        role: currentUser,
-                        title: title,
-                        content: content || (img ? '分享美好瞬间' : ''),
-                        image: img,
-                        location: location || '某个浪漫的角落',
-                        time: formatLocalTime(new Date()),
-                        comments: []
-                    });
-                    addHistory(`${nickname} 发布了一条新动态${title ? `: ${title}` : ''}`);
-                    renderAll(); saveData(); closeModal();
+                const createPostData = async (img = null) => {
+                    const saved = await commitStateChange((draft) => {
+                        const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                        draft.posts.push({
+                            id: Date.now(),
+                            role: currentUser,
+                            title,
+                            content: content || (img ? '分享美好瞬间' : ''),
+                            image: img,
+                            location: location || '某个浪漫的角落',
+                            time: formatLocalTime(new Date()),
+                            comments: []
+                        });
+                        appendHistoryEntry(draft, `${nickname} 发布了一条新动态${title ? `: ${title}` : ''}`);
+                    }, { errorMessage: '动态发布失败，请稍后重试。' });
+
+                    if (!saved) return;
+                    closeModal();
                 };
 
                 if (file) {
@@ -1504,7 +1524,7 @@
                     reader.onload = (e) => createPostData(e.target.result);
                     reader.readAsDataURL(file);
                 } else {
-                    createPostData();
+                    await createPostData();
                 }
                 return;
             }
@@ -1512,18 +1532,24 @@
             const name = document.getElementById('input-name').value;
             const points = parseInt(document.getElementById('input-points').value) || 0;
             const desc = document.getElementById('input-desc').value;
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
 
-            if (currentModalType === 'wishlist') {
-                state.requests.push({ id: Date.now(), type: 'wishlist_apply', name, points, desc, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl' });
-                addHistory(`${nickname} 提交了愿望 ${name} 的发布申请`);
-            } else {
-                const list = currentModalType === 'task' ? state.tasks : state.wishes;
-                list.push({ id: Date.now(), name, points, desc, creator: currentUser });
-                addHistory(`${nickname} 创建了${currentModalType === 'task' ? '任务' : '愿望商店项目'} ${name}`);
-            }
-            renderAll(); saveData(); closeModal();
+            const saved = await commitStateChange((draft) => {
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+
+                if (currentModalType === 'wishlist') {
+                    draft.requests.push({ id: Date.now(), type: 'wishlist_apply', name, points, desc, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl' });
+                    appendHistoryEntry(draft, `${nickname} 提交了愿望 ${name} 的发布申请`);
+                } else {
+                    const list = currentModalType === 'task' ? draft.tasks : draft.wishes;
+                    list.push({ id: Date.now(), name, points, desc, creator: currentUser });
+                    appendHistoryEntry(draft, `${nickname} 创建了${currentModalType === 'task' ? '任务' : '愿望商店项目'} ${name}`);
+                }
+            }, { errorMessage: '保存失败，请稍后重试。' });
+
+            if (!saved) return;
+            closeModal();
         }
+
 
         function checkReminders() {
             const shanghaiDate = getShanghaiDate();
@@ -1559,14 +1585,17 @@
 
         async function persistLocation(role, location) {
             if (!role) return null;
-            if (!state.locations) state.locations = createDefaultState().locations;
 
             const normalizedLocation = normalizeLocation(location);
-            state.locations[role] = normalizedLocation;
-            await saveData();
+            const saved = await commitStateChange((draft) => {
+                draft.locations[role] = normalizedLocation;
+            }, { render: false, errorMessage: '位置保存失败，请稍后重试。' });
+
+            if (!saved) return null;
             if (role === currentUser) updateWeather();
             return normalizedLocation;
         }
+
 
         async function reverseGeocodeLocation(lat, lon) {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`, {
@@ -1617,12 +1646,8 @@
             if (!currentUser) return;
             const otherRole = currentUser === 'girl' ? 'boy' : 'girl';
             
-            // 确保 locations 存在
-            if (!state.locations) {
-                state.locations = { girl: { city: '未知', time: null }, boy: { city: '未知', time: null } };
-            }
-            
             const loc = state.locations[otherRole];
+
             const partnerNick = state.nicknames[otherRole] || '对方';
 
             const weatherEl = document.getElementById('partner-weather');
@@ -1695,7 +1720,6 @@
         function renderAll() {
             if (!currentUser || !hasCompleteRoleCredentials(state, currentUser)) {
                 currentUser = null;
-                sessionStorage.removeItem('current_user');
                 return showLogin();
             }
             
@@ -1743,8 +1767,8 @@
         }
 
         function renderSpace() {
-            if (!state.posts) state.posts = [];
             const list = document.getElementById('space-list');
+
             list.innerHTML = state.posts.slice().reverse().map(post => {
                 const authorName = state.nicknames[post.role] || state.accounts[post.role];
                 return `
@@ -1791,54 +1815,67 @@
             `}).join('') || '<div style="opacity:0.7;text-align:center;padding:60px;color:var(--theme-text);font-style:italic;">✨ 在这里记录属于你们的时刻吧...</div>';
         }
 
-        function deletePost(id) {
-            const post = state.posts.find(p => p.id === id);
-            if (confirm('确定删除这条动态吗？')) {
-                const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-                addHistory(`${nickname} 删除了动态${post.title ? `: ${post.title}` : ''}`);
-                state.posts = state.posts.filter(p => p.id !== id);
-                renderAll(); saveData();
-            }
+        async function deletePost(id) {
+            if (!confirm('确定删除这条动态吗？')) return;
+
+            await commitStateChange((draft) => {
+                const post = draft.posts.find(p => p.id === id);
+                if (!post) throw new Error('动态不存在');
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                appendHistoryEntry(draft, `${nickname} 删除了动态${post.title ? `: ${post.title}` : ''}`);
+                draft.posts = draft.posts.filter(p => p.id !== id);
+            }, { errorMessage: '删除动态失败，请稍后重试。' });
         }
 
-        function addComment(postId) {
+        async function addComment(postId) {
             const input = document.getElementById(`comment-input-${postId}`);
             const text = input.value.trim();
             if (!text) return;
-            const post = state.posts.find(p => p.id === postId);
-            if (!post.comments) post.comments = [];
-            post.comments.push({ role: currentUser, text, time: formatLocalTime(new Date()), replies: [] });
+
+            const saved = await commitStateChange((draft) => {
+                const post = draft.posts.find(p => p.id === postId);
+                if (!post) throw new Error('动态不存在');
+
+                if (!post.comments) post.comments = [];
+                post.comments.push({ role: currentUser, text, time: formatLocalTime(new Date()), replies: [] });
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                const postAuthor = draft.nicknames[post.role] || draft.accounts[post.role];
+                appendHistoryEntry(draft, `${nickname} 评论了 ${postAuthor} 的动态`);
+            }, { errorMessage: '评论失败，请稍后重试。' });
+
+            if (!saved) return;
             input.value = '';
-            
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-            const postAuthor = state.nicknames[post.role] || state.accounts[post.role];
-            addHistory(`${nickname} 评论了 ${postAuthor} 的动态`);
-            
-            renderAll(); saveData();
         }
 
-        function showReplyInput(postId, commentIdx) {
+        async function showReplyInput(postId, commentIdx) {
             const text = prompt('回复评论:');
             if (!text) return;
-            const post = state.posts.find(p => p.id === postId);
-            if (!post.comments[commentIdx].replies) post.comments[commentIdx].replies = [];
-            post.comments[commentIdx].replies.push({ role: currentUser, text, time: new Date().toLocaleString() });
-            
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-            const comment = post.comments[commentIdx];
-            const commentAuthor = state.nicknames[comment.role] || state.accounts[comment.role];
-            addHistory(`${nickname} 回复了 ${commentAuthor} 的评论`);
-            
-            renderAll(); saveData();
+
+            await commitStateChange((draft) => {
+                const post = draft.posts.find(p => p.id === postId);
+                if (!post) throw new Error('动态不存在');
+                if (!post.comments?.[commentIdx]) throw new Error('评论不存在');
+
+                if (!post.comments[commentIdx].replies) post.comments[commentIdx].replies = [];
+                post.comments[commentIdx].replies.push({ role: currentUser, text, time: formatLocalTime(new Date()) });
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                const comment = post.comments[commentIdx];
+                const commentAuthor = draft.nicknames[comment.role] || draft.accounts[comment.role];
+                appendHistoryEntry(draft, `${nickname} 回复了 ${commentAuthor} 的评论`);
+            }, { errorMessage: '回复失败，请稍后重试。' });
         }
 
+
         function renderDogClicks() {
-            if (!state.dogClicks) state.dogClicks = { girl: 0, boy: 0 };
             const girlCount = document.getElementById('dog-count-girl');
             const boyCount = document.getElementById('dog-count-boy');
             if (girlCount) girlCount.innerText = state.dogClicks.girl;
             if (boyCount) boyCount.innerText = state.dogClicks.boy;
         }
+
 
         let suppressPetClick = { dog: false, cat: false };
         let petResetHandler = () => {};
@@ -2085,7 +2122,7 @@
             window.addEventListener('pageshow', () => updatePetVisibility());
         }
 
-        function handleDogClick(e, petType) {
+        async function handleDogClick(e, petType) {
             if (!currentUser) return showLogin();
             if (!petType) return;
             if (suppressPetClick[petType]) {
@@ -2100,10 +2137,11 @@
             void pet.offsetWidth;
             pet.classList.add('animate');
 
-            if (!state.dogClicks) state.dogClicks = { girl: 0, boy: 0 };
-            state.dogClicks[currentUser]++;
+            await commitStateChange((draft) => {
+                if (!draft.dogClicks) draft.dogClicks = { girl: 0, boy: 0 };
+                draft.dogClicks[currentUser]++;
+            }, { render: false, errorMessage: '宠物点击保存失败，请稍后重试。' });
 
-            saveData();
             renderDogClicks();
         }
 
@@ -2114,8 +2152,8 @@
             requestAnimationFrame(update);
         }
 
-        function addHistory(text) { 
-            const now = new Date(); 
+        function appendHistoryEntry(snapshot, text) {
+            const now = new Date();
             const d8Str = new Intl.DateTimeFormat('zh-CN', {
                 timeZone: 'Asia/Shanghai',
                 month: 'numeric',
@@ -2124,17 +2162,25 @@
                 minute: '2-digit',
                 hour12: false
             }).format(now);
-            state.history.push({ id: Date.now(), text, time: d8Str }); 
-            if (state.history.length > 50) state.history.shift(); 
+            snapshot.history.push({ id: Date.now(), text, time: d8Str });
+            if (snapshot.history.length > 50) snapshot.history.shift();
         }
+
+        function addHistory(text) {
+            appendHistoryEntry(state, text);
+        }
+
         function closeModal() { 
             document.getElementById('modal-overlay').style.display = 'none'; 
-            // 恢复默认的确认按钮文字
             const confirmBtn = document.getElementById('modal-confirm-btn');
             if (confirmBtn) confirmBtn.innerText = '确认';
         }
-        function openResetModal() { 
+
+        async function openResetModal() { 
             if (!currentUser) return alert('请先登录后再进行此操作');
+            const latestState = await syncStateFromDatabase({ preserveCurrentUser: true, silent: true });
+            if (!latestState) return alert('数据库读取失败，请稍后重试。');
+
             currentModalType = 'reset'; 
             document.getElementById('modal-title').innerText = '整库重置确认'; 
             document.getElementById('modal-label-1').innerText = '请输入任一已注册账号的密码以清空全部数据'; 
@@ -2148,14 +2194,17 @@
             document.getElementById('modal-overlay').style.display = 'flex'; 
         }
 
-        function openModal(type, id = null) {
-            currentModalType = type; editingId = id;
+        async function openModal(type, id = null) {
+            const latestState = await syncStateFromDatabase({ preserveCurrentUser: true, silent: true });
+            if (!latestState) return alert('数据库读取失败，请稍后重试。');
+
+            currentModalType = type;
+            editingId = id;
             document.getElementById('modal-form').style.display = 'block';
             document.getElementById('day-detail').style.display = 'none';
             document.getElementById('modal-confirm-btn').style.display = 'block';
             document.getElementById('modal-title').innerText = type;
             
-            // Reset fields
             document.getElementById('points-group').style.display = 'block';
             document.getElementById('desc-group').style.display = 'block';
             document.getElementById('evidence-group').style.display = 'none';
@@ -2188,98 +2237,129 @@
             
             document.getElementById('modal-overlay').style.display = 'flex';
         }
+
         function changeMonth(step) { viewDate.setMonth(viewDate.getMonth() + step); renderCalendar(); }
-        function removeRequestById(id) {
-            state.requests = state.requests.filter(r => String(r.id) !== String(id));
+
+        function removeRequestById(id, snapshot = state) {
+            snapshot.requests = snapshot.requests.filter(r => String(r.id) !== String(id));
         }
-        function approveRequest(id) { 
-            const req = state.requests.find(r => String(r.id) === String(id));
-            if (!req) return;
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-            const requesterName = state.nicknames[req.requester] || state.accounts[req.requester];
-            
-            if (req.type === 'wish') {
-                state.scores[req.requester] -= req.points;
-                addHistory(`${nickname} 准了 ${requesterName} 的愿望兑换: ${req.name} (-${req.points} 积分)`);
-            } else {
-                state.scores[req.requester] += req.points;
-                addHistory(`${nickname} 准了 ${requesterName} 的任务完成: ${req.name} (+${req.points} 积分)`);
-            }
-            removeRequestById(id);
-            renderAll(); saveData(); 
+
+        async function approveRequest(id) { 
+            await commitStateChange((draft) => {
+                const req = draft.requests.find(r => String(r.id) === String(id));
+                if (!req) throw new Error('申请不存在');
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                const requesterName = draft.nicknames[req.requester] || draft.accounts[req.requester];
+                
+                if (req.type === 'wish') {
+                    draft.scores[req.requester] -= req.points;
+                    appendHistoryEntry(draft, `${nickname} 准了 ${requesterName} 的愿望兑换: ${req.name} (-${req.points} 积分)`);
+                } else {
+                    draft.scores[req.requester] += req.points;
+                    appendHistoryEntry(draft, `${nickname} 准了 ${requesterName} 的任务完成: ${req.name} (+${req.points} 积分)`);
+                }
+                removeRequestById(id, draft);
+            }, { errorMessage: '审批失败，请稍后重试。' });
         }
-        function approveWishlistApply(id) { 
-            const req = state.requests.find(r => String(r.id) === String(id));
-            if (!req) return;
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-            const requesterName = state.nicknames[req.requester] || state.accounts[req.requester];
-            
-            state.wishlist.push({ ...req, id: Date.now() }); 
-            removeRequestById(id);
-            addHistory(`${nickname} 准了 ${requesterName} 的愿望发布: ${req.name}`);
-            renderAll(); saveData(); 
+
+        async function approveWishlistApply(id) { 
+            await commitStateChange((draft) => {
+                const req = draft.requests.find(r => String(r.id) === String(id));
+                if (!req) throw new Error('申请不存在');
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                const requesterName = draft.nicknames[req.requester] || draft.accounts[req.requester];
+                draft.wishlist.push({ ...req, id: Date.now() });
+                removeRequestById(id, draft);
+                appendHistoryEntry(draft, `${nickname} 准了 ${requesterName} 的愿望发布: ${req.name}`);
+            }, { errorMessage: '审批失败，请稍后重试。' });
         }
-        function approveWishlistItem(id) { 
-            const idx = state.wishlist.findIndex(i => i.id === id); 
-            const item = state.wishlist[idx]; 
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-            
-            state.wishes.push({ ...item, id: Date.now(), creator: currentUser }); 
-            state.wishlist.splice(idx, 1); 
-            addHistory(`${nickname} 采纳了愿望清单中的项目: ${item.name}`);
-            renderAll(); saveData(); 
+
+        async function approveWishlistItem(id) { 
+            await commitStateChange((draft) => {
+                const idx = draft.wishlist.findIndex(i => i.id === id);
+                const item = draft.wishlist[idx];
+                if (idx < 0 || !item) throw new Error('心愿计划不存在');
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                draft.wishes.push({ ...item, id: Date.now(), creator: currentUser });
+                draft.wishlist.splice(idx, 1);
+                appendHistoryEntry(draft, `${nickname} 采纳了愿望清单中的项目: ${item.name}`);
+            }, { errorMessage: '采纳失败，请稍后重试。' });
         }
-        function rejectRequest(id) { 
+
+        async function rejectRequest(id) { 
             if (!confirm('确定要驳回这条申请吗？')) return;
-            const req = state.requests.find(r => String(r.id) === String(id));
-            if (!req) return;
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-            const requesterName = state.nicknames[req.requester] || state.accounts[req.requester];
-            
-            addHistory(`${nickname} 驳回了 ${requesterName} 的申请: ${req.name}`);
-            removeRequestById(id);
-            renderAll(); saveData(); 
+            await commitStateChange((draft) => {
+                const req = draft.requests.find(r => String(r.id) === String(id));
+                if (!req) throw new Error('申请不存在');
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                const requesterName = draft.nicknames[req.requester] || draft.accounts[req.requester];
+                appendHistoryEntry(draft, `${nickname} 驳回了 ${requesterName} 的申请: ${req.name}`);
+                removeRequestById(id, draft);
+            }, { errorMessage: '驳回失败，请稍后重试。' });
         }
-        function deleteRequest(id) { 
+
+        async function deleteRequest(id) { 
             if (!confirm('确定要撤销这条申请吗？')) return;
-            const req = state.requests.find(r => String(r.id) === String(id));
-            if (!req) return;
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-            
-            addHistory(`${nickname} 撤销了申请: ${req.name}`);
-            removeRequestById(id);
-            renderAll(); saveData(); 
+            await commitStateChange((draft) => {
+                const req = draft.requests.find(r => String(r.id) === String(id));
+                if (!req) throw new Error('申请不存在');
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                appendHistoryEntry(draft, `${nickname} 撤销了申请: ${req.name}`);
+                removeRequestById(id, draft);
+            }, { errorMessage: '撤销失败，请稍后重试。' });
         }
-        function deleteItem(t, id) { 
+
+        async function deleteItem(t, id) { 
             if (!confirm(`确定要删除这个${t === 'task' ? '任务' : '愿望'}吗？`)) return;
-            const l = t === 'task' ? state.tasks : state.wishes; 
-            const idx = l.findIndex(i => i.id === id);
-            const item = l[idx];
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-            
-            addHistory(`${nickname} 删除了${t === 'task' ? '任务' : '愿望'}: ${item.name}`);
-            l.splice(idx, 1); 
-            renderAll(); saveData(); 
+            await commitStateChange((draft) => {
+                const list = t === 'task' ? draft.tasks : draft.wishes;
+                const idx = list.findIndex(i => i.id === id);
+                const item = list[idx];
+                if (idx < 0 || !item) throw new Error('目标不存在');
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                appendHistoryEntry(draft, `${nickname} 删除了${t === 'task' ? '任务' : '愿望'}: ${item.name}`);
+                list.splice(idx, 1);
+            }, { errorMessage: '删除失败，请稍后重试。' });
         }
-        function deleteWishlistItem(id) { 
+
+        async function deleteWishlistItem(id) { 
             if (!confirm('确定要删除这个心愿计划吗？')) return;
-            const idx = state.wishlist.findIndex(i => i.id === id);
-            const item = state.wishlist[idx];
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-            
-            addHistory(`${nickname} 删除了心愿清单中的项目: ${item.name}`);
-            state.wishlist.splice(idx, 1); 
-            renderAll(); saveData(); 
+            await commitStateChange((draft) => {
+                const idx = draft.wishlist.findIndex(i => i.id === id);
+                const item = draft.wishlist[idx];
+                if (idx < 0 || !item) throw new Error('心愿计划不存在');
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                appendHistoryEntry(draft, `${nickname} 删除了心愿清单中的项目: ${item.name}`);
+                draft.wishlist.splice(idx, 1);
+            }, { errorMessage: '删除失败，请稍后重试。' });
         }
-        function confirmRedeemWish(id) { 
-            const wish = state.wishes.find(w => w.id === id); 
-            if (state.scores[currentUser] < wish.points) return alert('积分不足'); 
-            const nickname = state.nicknames[currentUser] || state.accounts[currentUser];
-            
-            state.requests.push({ id: Date.now(), type: 'wish', name: wish.name, points: wish.points, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl' }); 
-            addHistory(`${nickname} 申请兑换愿望: ${wish.name}`);
-            renderAll(); saveData(); 
+
+        async function confirmRedeemWish(id) { 
+            const latestState = await syncStateFromDatabase({ preserveCurrentUser: true, silent: true });
+            if (!latestState) return alert('数据库读取失败，请稍后重试。');
+
+            const wish = latestState.wishes.find(w => w.id === id);
+            if (!wish) return alert('愿望不存在或已被删除');
+            if (latestState.scores[currentUser] < wish.points) return alert('积分不足');
+
+            await commitStateChange((draft) => {
+                const freshWish = draft.wishes.find(w => w.id === id);
+                if (!freshWish) throw new Error('愿望不存在');
+                if (draft.scores[currentUser] < freshWish.points) throw new Error('积分不足');
+
+                const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                draft.requests.push({ id: Date.now(), type: 'wish', name: freshWish.name, points: freshWish.points, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl' });
+                appendHistoryEntry(draft, `${nickname} 申请兑换愿望: ${freshWish.name}`);
+            }, { errorMessage: '兑换申请提交失败，请稍后重试。' });
         }
+
 
         const canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d'); let particles = [];
         function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
