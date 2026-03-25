@@ -876,8 +876,9 @@
                 .maybeSingle();
 
             if (error) throw error;
+            // 如果数据库为空或记录不存在，返回规范化后的默认状态，而不是抛出错误
             if (!data?.data || isEmptyDatabaseState(data.data)) {
-                throw new Error('数据库中未找到完整主数据记录。');
+                return normalizeState(createDefaultState());
             }
 
             return normalizeState(data.data);
