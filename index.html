@@ -1849,24 +1849,37 @@
             if (currentModalType === 'post_edit') {
                 const title = document.getElementById('input-name').value.trim();
                 const content = document.getElementById('input-desc').value.trim();
-                const location = document.getElementById('input-city').value.trim();
+                const manualCity = document.getElementById('input-city').value.trim();
+                const file = document.getElementById('input-file').files[0];
 
-                const saved = await commitStateChange((draft) => {
-                    const post = draft.posts.find(p => p.id === editingId);
-                    if (!post) throw new Error('动态不存在');
-                    if (post.role !== currentUser) throw new Error('无权修改');
+                const updatePostData = async (img = null) => {
+                    const saved = await commitStateChange((draft) => {
+                        const post = draft.posts.find(p => p.id === editingId);
+                        if (!post) throw new Error('动态不存在');
+                        if (post.role !== currentUser) throw new Error('无权修改');
 
-                    const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
-                    appendHistoryEntry(draft, `${nickname} 修改了动态: ${title || '无标题'}`);
-                    post.title = title;
-                    post.content = content;
-                    post.location = location;
-                }, { errorMessage: '动态修改失败，请稍后重试。' });
+                        const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                        appendHistoryEntry(draft, `${nickname} 修改了动态: ${title || '无标题'}`);
+                        post.title = title;
+                        post.content = content;
+                        if (manualCity) post.location = manualCity;
+                        if (img) post.image = img;
+                    }, { errorMessage: '动态修改失败，请稍后重试。' });
 
-                if (!saved) return;
-                closeModal();
+                    if (!saved) return;
+                    closeModal();
+                };
+
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => updatePostData(e.target.result);
+                    reader.readAsDataURL(file);
+                } else {
+                    await updatePostData();
+                }
                 return;
             }
+
 
             if (currentModalType === 'task_apply') {
 
@@ -2819,7 +2832,25 @@
                         document.getElementById('location-display').innerText = '无法获取自动定位，请在上方手动输入位置';
                     }
                 });
+            } else if (type === 'post_edit') {
+                const post = latestState.posts.find(p => p.id === id);
+                if (!post) return alert('动态不存在');
+                if (post.role !== currentUser) return alert('无权修改此动态');
+
+                document.getElementById('modal-title').innerText = '修改动态';
+                document.getElementById('modal-label-1').innerText = '标题 (选填)';
+                document.getElementById('modal-label-3').innerText = '此时此刻的想法...';
+                document.getElementById('points-group').style.display = 'none';
+                document.getElementById('evidence-group').style.display = 'block';
+                document.getElementById('manual-location-group').style.display = 'block';
+                document.getElementById('file-label').innerText = '更新图片 (不选则保留原图)';
+                
+                document.getElementById('input-name').value = post.title || '';
+                document.getElementById('input-desc').value = post.content || '';
+                document.getElementById('input-city').value = post.location || '';
+                document.getElementById('location-display').innerText = '修改模式：你可以重新上传图片或修改文字。';
             } else if (type === 'task_edit') {
+
                 const task = latestState.tasks.find(t => t.id === id);
                 if (!task) return alert('任务不存在');
                 if (Date.now() - task.id >= 600000) return alert('发布已超过10分钟，无法修改');
