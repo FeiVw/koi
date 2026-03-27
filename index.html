@@ -23,21 +23,29 @@
         body.role-boy { --theme-bg: var(--pink-bg); --theme-primary: var(--pink-primary); --theme-text: var(--pink-text); }
 
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html {
+            /* 强制保持纵向滚动条占位，防止滚动条消失导致页面抖动（由色转白、拖拽宠物等场景） */
+            overflow-y: scroll;
+            scrollbar-gutter: stable;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: var(--theme-bg); color: var(--theme-text);
             transition: var(--transition); min-height: 100vh; padding-bottom: 80px;
         }
         html.pet-dragging, body.pet-dragging {
-            overflow: hidden !important;
+            /* 移除 overflow: hidden 以防止由于滚动条（滑动条）消失导致的页面整体偏移 */
             touch-action: none;
             overscroll-behavior: none;
         }
 
         header {
             padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 15px;
-            background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px);
-            position: sticky; top: 0; z-index: 100;
+            background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(15px);
+            position: sticky; top: 0; z-index: 2000; /* 提高 z-index 确保在拖拽时依然可见 */
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
         }
 
         .role-switcher { display: flex; background: rgba(255, 255, 255, 0.5); padding: 5px; border-radius: 50px; width: 200px; position: relative; }
@@ -106,6 +114,8 @@
         
         .calendar-day.has-event { background-color: rgba(255, 77, 79, 0.05); }
         .calendar-day.has-user-event { background-color: rgba(114, 46, 209, 0.05); }
+        .calendar-day.has-schedule { background-color: rgba(147, 112, 219, 0.1); }
+
 
         /* 恋爱空间样式 */
         .space-section { margin-top: 40px; }
@@ -164,7 +174,8 @@
         .weather-city { font-size: 0.75rem; opacity: 0.6; }
 
         /* 弹窗系统 */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: flex-start; z-index: 1000; overflow-y: auto; padding: 20px 0; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: flex-start; z-index: 5000; overflow-y: auto; padding: 20px 0; }
+
         .modal { background: var(--white); width: 90%; max-width: 450px; padding: 30px; border-radius: 25px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2); margin: auto; }
         .modal h2 { margin-bottom: 20px; }
         .input-group { margin-bottom: 15px; }
@@ -180,7 +191,8 @@
         #setup-overlay, #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--theme-bg); display: none; flex-direction: column; align-items: center; z-index: 2000; overflow-y: auto; padding: 40px 0; }
         
         /* 初始隐藏页面，防止加载闪现 */
-        body:not(.logged-in) header, body:not(.logged-in) main, body:not(.logged-in) .floating-pet, body:not(.logged-in) #pet-reset-btn { display: none !important; }
+        body:not(.logged-in) header, body:not(.logged-in) main, body:not(.logged-in) .floating-pet, body:not(.logged-in) .pet-controls { display: none !important; }
+
 
 
         .setup-card, .login-card { 
@@ -190,8 +202,43 @@
             text-align: center; margin: auto; 
         }
         
-        .logout-btn { position: absolute; right: 20px; top: 20px; padding: 6px 12px; font-size: 0.75rem; border: 1px solid #ff4d4f; color: #ff4d4f; background: white; border-radius: 50px; cursor: pointer; z-index: 2000; }
-        #pet-reset-btn { position: fixed; left: 20px; top: 20px; padding: 6px 12px; font-size: 0.75rem; border: 1px solid var(--theme-primary); color: var(--theme-text); background: rgba(255, 255, 255, 0.92); border-radius: 50px; cursor: pointer; z-index: 2000; box-shadow: var(--shadow); }
+        .logout-btn { position: absolute; right: 20px; top: 20px; padding: 6px 12px; font-size: 0.75rem; border: 1px solid #ff4d4f; color: #ff4d4f; background: white; border-radius: 50px; cursor: pointer; z-index: 2100; }
+        
+        .pet-controls {
+            position: fixed;
+            left: 20px;
+            top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 2100;
+        }
+
+        .pet-ctrl-btn {
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            border: 1px solid var(--theme-primary);
+            color: var(--theme-text);
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: all 0.2s;
+            backdrop-filter: blur(5px);
+        }
+
+        .pet-ctrl-btn:hover {
+            background: var(--theme-primary);
+            color: white;
+        }
+
+        .pet-ctrl-btn.active {
+            background: var(--theme-primary);
+            color: white;
+        }
+
+        #pet-reset-btn { display: none; } /* 旧按钮隐藏，使用新容器中的按钮 */
+
 
         
         #canvas { position: fixed; top: 0; left: 0; pointer-events: none; z-index: 9999; }
@@ -199,23 +246,121 @@
         .reset-trigger { opacity: 0.3; font-size: 0.8rem; cursor: pointer; transition: var(--transition); border: none; background: none; color: var(--theme-text); }
         .reset-trigger:hover { opacity: 0.8; color: #ff4d4f; }
 
-        /* 功能板块配色与容器 */
+        /* 功能板块配色与容器 - 渐变羽化效果方案 */
         .feature-box {
-            padding: 20px;
-            border-radius: 24px;
-            margin-bottom: 30px;
-            box-shadow: var(--shadow);
-            border: var(--border-feather);
-            backdrop-filter: blur(10px);
+            background-color: white;
+            border-radius: 40px;
+            padding: 30px 24px;
+            margin-bottom: 45px;
             position: relative;
+            /* 移除实色边框，改用大型内阴影实现从边缘色彩到中心纯白的自然羽化 */
+            border: none;
+            box-shadow: 
+                0 15px 45px rgba(0,0,0,0.05),
+                /* 关键：通过 15px 的 spread 和 50px 的 blur，让颜色从边缘“渗入”内部并逐渐变白 */
+                inset 0 0 50px 10px var(--box-color, #eee); 
+            transition: transform 0.3s ease;
         }
-        .feature-box::after {
-            content: "";
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            border-radius: 24px;
-            pointer-events: none;
-            box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.4);
+        
+        .feature-box:hover { transform: translateY(-5px); }
+        .feature-box .section-header { margin-top: 0; margin-bottom: 25px; }
+        .feature-box .section-title { color: #555 !important; font-size: 1.3rem; font-weight: 800; letter-spacing: 1px; }
+
+        /* 分页控件样式 */
+        .pagination-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px dashed rgba(0,0,0,0.05);
+        }
+        .page-btn {
+            background: white;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 5px 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #666;
+        }
+        .page-btn:hover:not(:disabled) {
+            border-color: var(--theme-primary);
+            color: var(--theme-primary);
+            background: var(--theme-bg);
+        }
+        .page-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .page-info {
+            font-size: 0.85rem;
+            color: #888;
+            font-weight: 600;
+        }
+
+        /* 日程与小任务样式 */
+        .day-section-title { font-size: 1rem; font-weight: 800; margin: 25px 0 15px; display: flex; align-items: center; gap: 10px; color: var(--theme-text); border-bottom: 2px solid var(--theme-bg); padding-bottom: 10px; }
+        .schedule-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        .schedule-item { 
+            background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%); 
+            padding: 12px 18px; border-radius: 16px; 
+            display: flex; align-items: center; gap: 12px; font-size: 0.9rem;
+            animation: fadeIn 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.04);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+            transition: all 0.3s ease;
+        }
+        .schedule-item.completed { background: #f5f5f5; opacity: 0.7; }
+        .schedule-item.completed .schedule-content { text-decoration: line-through; color: #888; }
+        .schedule-item:hover { transform: translateX(5px); box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .schedule-time { font-weight: 700; color: var(--theme-primary); white-space: nowrap; background: var(--theme-bg); padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; letter-spacing: 0.5px; }
+        .schedule-content { flex: 1; font-weight: 500; color: #444; }
+        .schedule-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: var(--theme-primary); border-radius: 6px; }
+        
+        .delete-icon { cursor: pointer; opacity: 0.3; transition: var(--transition); font-size: 1.1rem; padding: 6px; border-radius: 50%; }
+        .delete-icon:hover { opacity: 1; color: #ff4d4f; background: #fff1f0; }
+        
+        .add-mini-form { 
+            background: #fff; border: 1.5px dashed var(--theme-primary); padding: 18px; border-radius: 18px; 
+            display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;
+        }
+        .add-mini-row { display: flex; gap: 10px; align-items: center; }
+        .add-mini-form input { flex: 1; padding: 12px 15px; border: 1px solid #eee; border-radius: 12px; font-size: 0.9rem; outline: none; transition: var(--transition); background: #fcfcfc; }
+        .add-mini-form input:focus { border-color: var(--theme-primary); background: #fff; box-shadow: 0 0 0 3px rgba(var(--theme-primary-rgb, 213, 164, 169), 0.1); }
+        .add-mini-btn { padding: 12px 20px; background: var(--theme-primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 0.9rem; font-weight: 700; transition: all 0.2s; }
+        .add-mini-btn:hover { filter: brightness(1.05); transform: translateY(-1px); }
+        
+        .marker.schedule { background: #9370db; box-shadow: 0 0 8px rgba(147, 112, 219, 0.6); }
+        .marker.schedule.girl { background: #eb2f96; box-shadow: 0 0 5px rgba(235, 47, 150, 0.5); }
+        .marker.schedule.boy { background: #1890ff; box-shadow: 0 0 5px rgba(24, 144, 255, 0.5); }
+
+
+        .schedule-user-tag {
+            font-size: 0.65rem; padding: 2px 6px; border-radius: 6px; font-weight: 700;
+            white-space: nowrap; margin-right: 2px;
+        }
+        .schedule-user-tag.girl { background: #fff0f6; color: #eb2f96; border: 1px solid #ffadd2; }
+        .schedule-user-tag.boy { background: #e6f7ff; color: #1890ff; border: 1px solid #91d5ff; }
+
+        .schedule-item.girl { border-left: 4px solid #ffadd2; }
+        .schedule-item.boy { border-left: 4px solid #91d5ff; }
+
+
+
+
+
+        /* 内部卡片样式优化 */
+        .card, .post-card { 
+            background: rgba(255, 255, 255, 0.7); 
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255,255,255,0.8);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            border-radius: 18px;
         }
 
         /* 小狗点击互动样式 */
@@ -298,11 +443,11 @@
         .count-girl { color: #FF69B4; } /* 粉色 */
         .count-boy { color: #1E90FF; }  /* 蓝色 */
 
-        .bg-wishlist { background: rgba(244, 223, 230, 0.7) !important; backdrop-filter: blur(8px); }
-        .bg-tasks { background: rgba(224, 163, 187, 0.7) !important; backdrop-filter: blur(8px); }
-        .bg-shop { background: rgba(214, 230, 231, 0.7) !important; backdrop-filter: blur(8px); }
-        .bg-history { background: rgba(197, 204, 130, 0.7) !important; backdrop-filter: blur(8px); }
-        .bg-space { background: rgba(151, 161, 88, 0.7) !important; backdrop-filter: blur(8px); }
+        .bg-wishlist { --box-color: #ffd1dc !important; }
+        .bg-tasks { --box-color: #ffcc99 !important; }
+        .bg-shop { --box-color: #c1e1c1 !important; }
+        .bg-history { --box-color: #aec6cf !important; }
+        .bg-space { --box-color: #cf91ff !important; }
 
         .feature-box .section-header { margin-top: 0; }
         .feature-box .section-title { color: rgba(0, 0, 0, 0.7); }
@@ -406,9 +551,15 @@
         </div>
     </div>
 
-    <button id="pet-reset-btn" onclick="resetPetsToCenter()">宠物复位</button>
+    <div class="pet-controls" id="pet-controls-container">
+        <button class="pet-ctrl-btn" onclick="resetPetsToCenter()">宠物复位</button>
+        <button id="pet-link-toggle" class="pet-ctrl-btn active" onclick="togglePetLink()">🔗 链接中</button>
+        <button class="pet-ctrl-btn" onclick="openModal('manual_location')">📍 提交城市</button>
+    </div>
+
 
     <header>
+
         <button class="logout-btn" onclick="handleLogout()">登出</button>
         <div class="role-switcher" style="display: none;">
             <div class="role-indicator"></div>
@@ -433,9 +584,11 @@
                     <span id="weather-temp" class="weather-temp">--°C</span>
                     <span id="weather-city" class="weather-city">加载中...</span>
                 </div>
-                <div style="margin-left: auto; font-size: 0.7rem; opacity: 0.4; text-align: right;">
-                    <span id="partner-nickname">对方</span> 的城市
+                <div style="margin-left: auto; font-size: 0.7rem; opacity: 0.4; text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
+                    <div><span id="partner-status" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ccc; margin-right: 4px;"></span><span id="partner-nickname">对方</span> 的城市</div>
+                    <div id="partner-status-text" style="font-size: 0.6rem; opacity: 0.6;">离线</div>
                 </div>
+
             </div>
 
             <!-- 小狗点击互动模块占位（用于保持原始显示位置） -->
@@ -469,7 +622,12 @@
                 <div style="display:flex; align-items:center; gap:4px;"><span class="marker event" style="display:inline-block; position:static;"></span> 系统纪念日</div>
                 <div style="display:flex; align-items:center; gap:4px;"><span class="marker user-event" style="display:inline-block; position:static;"></span> 自定义纪念日</div>
                 <div style="display:flex; align-items:center; gap:4px;"><span class="marker note" style="display:inline-block; position:static;"></span> 日记备注</div>
+                <div style="display:flex; align-items:center; gap:4px;"><span class="marker schedule girl" style="display:inline-block; position:static;"></span> 她/我的安排</div>
+                <div style="display:flex; align-items:center; gap:4px;"><span class="marker schedule boy" style="display:inline-block; position:static;"></span> 他/我的安排</div>
+                <div style="display:flex; align-items:center; gap:4px;"><span class="marker schedule" style="display:inline-block; position:static;"></span> 共同安排</div>
                 <div style="display:flex; align-items:center; gap:4px;"><span class="marker check" style="display:inline-block; position:static;"></span> 已签到</div>
+
+
             </div>
         </section>
 
@@ -489,6 +647,7 @@
                 <button class="add-btn" onclick="openModal('wishlist')">+</button>
             </div>
             <div id="wishlist-list" class="card-list"></div>
+            <div id="wishlist-pagination" class="pagination-controls"></div>
         </section>
 
         <section class="feature-box bg-tasks">
@@ -497,6 +656,7 @@
                 <button class="add-btn" onclick="openModal('task')">+</button>
             </div>
             <div id="task-list" class="card-list"></div>
+            <div id="task-pagination" class="pagination-controls"></div>
         </section>
 
         <section class="feature-box bg-shop">
@@ -505,11 +665,13 @@
                 <button class="add-btn" onclick="openModal('wish')">+</button>
             </div>
             <div id="wish-list" class="card-list"></div>
+            <div id="wish-pagination" class="pagination-controls"></div>
         </section>
 
         <section class="feature-box bg-history">
             <div class="section-header"><h2 class="section-title">📜 操作记录</h2></div>
             <div id="history-list" class="history-list"></div>
+            <div id="history-pagination" class="pagination-controls"></div>
         </section>
 
         <section class="feature-box bg-space space-section">
@@ -518,6 +680,7 @@
                 <button class="add-btn" onclick="openModal('space_post')">+</button>
             </div>
             <div id="space-list"></div>
+            <div id="space-pagination" class="pagination-controls"></div>
         </section>
 
         <footer class="system-footer">
@@ -546,10 +709,31 @@
                     <label id="file-label">证据图片</label>
                     <input type="file" id="input-file" accept="image/*">
                 </div>
-                <div id="location-display"></div>
+                <div class="input-group" id="manual-location-group" style="display: none;">
+                    <label>所在城市 (可选)</label>
+                    <input type="text" id="input-city" placeholder="手动输入城市，如：北京">
+                </div>
+                <div id="location-display" style="font-size: 0.85rem; opacity: 0.6; margin-top: 10px;"></div>
             </div>
+
             <div id="day-detail" style="display: none;">
                 <div id="day-events-list" style="margin-bottom: 20px; line-height: 1.6;"></div>
+                
+                <div class="day-section-title">🕒 今日日程 (几点到几点)</div>
+                <div id="day-schedule-list" class="schedule-list"></div>
+                <div class="add-mini-form">
+                    <div class="add-mini-row">
+                        <input type="time" id="sched-start" placeholder="开始">
+                        <span>-</span>
+                        <input type="time" id="sched-end" placeholder="结束">
+                    </div>
+                    <div class="add-mini-row">
+                        <input type="text" id="sched-text" placeholder="要做什么...">
+                        <button class="add-mini-btn" onclick="addScheduleItemUI()">添加</button>
+                    </div>
+                </div>
+
+                <div class="day-section-title">🖊️ 记录与备注</div>
                 <div class="input-group">
                     <label>自定义纪念日名称 (选填)</label>
                     <input type="text" id="day-event-input" placeholder="例如：第一次看电影">
@@ -678,6 +862,7 @@
                 tasks: [], wishes: [], wishlist: [], requests: [], history: [],
                 startDate: formatLocalDate(new Date()),
                 checkIns: {}, userEvents: {}, userNotes: {},
+                schedules: {},
                 posts: []
             };
         }
@@ -797,7 +982,12 @@
                     girl: normalizeText(rawState.birthdays?.girl),
                     boy: normalizeText(rawState.birthdays?.boy)
                 },
+                lastActive: {
+                    girl: normalizeNumber(rawState.lastActive?.girl),
+                    boy: normalizeNumber(rawState.lastActive?.boy)
+                },
                 locations: {
+
                     girl: normalizeLocation(rawState.locations?.girl),
                     boy: normalizeLocation(rawState.locations?.boy)
                 },
@@ -810,6 +1000,7 @@
                 checkIns: isPlainObject(rawState.checkIns) ? rawState.checkIns : {},
                 userEvents: isPlainObject(rawState.userEvents) ? rawState.userEvents : {},
                 userNotes: isPlainObject(rawState.userNotes) ? rawState.userNotes : {},
+                schedules: isPlainObject(rawState.schedules) ? rawState.schedules : {},
                 posts: Array.isArray(rawState.posts) ? rawState.posts : []
             };
 
@@ -832,8 +1023,42 @@
 
         let currentUser = null; // 当前登录的用户 (girl 或 boy)
 
+        // 分页状态管理
+        const PAGINATION = {
+            wishlist: { page: 1, limit: 5 },
+            task: { page: 1, limit: 5 },
+            wish: { page: 1, limit: 5 },
+            history: { page: 1, limit: 8 },
+            space: { page: 1, limit: 5 }
+        };
+
+        let PETS_LINKED = true;
+
+        let heartbeatTimer = null;
+        let statusCheckTimer = null;
+        function startHeartbeat() {
+            if (heartbeatTimer) clearInterval(heartbeatTimer);
+            if (statusCheckTimer) clearInterval(statusCheckTimer);
+            
+            // 每一分钟更新一次自己的在线状态
+            heartbeatTimer = setInterval(async () => {
+                if (currentUser) {
+                    await commitStateChange(() => {}, { render: false });
+                }
+            }, 60000);
+
+            // 每 30 秒刷新一次页面数据，以便看到对方的在线状态和动态
+            statusCheckTimer = setInterval(async () => {
+                if (currentUser) {
+                    await syncStateFromDatabase();
+                }
+            }, 30000);
+        }
+
 
         let viewDate = new Date();
+
+
         let editingDate = null;
 
         function formatLocalDate(date) {
@@ -931,7 +1156,9 @@
                 if (savedRole && (savedRole === 'girl' || savedRole === 'boy') && hasCompleteRoleCredentials(latestState, savedRole)) {
                     currentUser = savedRole;
                     document.body.className = `role-${currentUser} auth-ready logged-in`;
+                    startHeartbeat(); // 开始心跳检测
                     updatePetVisibility();
+
                     renderAll();
                     // 自动更新位置
                     updateLocation();
@@ -1007,7 +1234,9 @@
 
             currentUser = role;
             localStorage.setItem('shiro_current_user', role);
+            startHeartbeat(); // 开始心跳检测
             document.body.className = `role-${role} auth-ready logged-in`;
+
             updatePetVisibility();
             document.getElementById('login-overlay').style.display = 'none';
             renderAll();
@@ -1032,8 +1261,14 @@
         }
 
         function handleLogout() {
+            if (!confirm('确定要登出吗？')) return;
+            if (heartbeatTimer) clearInterval(heartbeatTimer);
+            if (statusCheckTimer) clearInterval(statusCheckTimer);
+            localStorage.removeItem('shiro_current_user');
             currentUser = null;
-            location.reload();
+
+            // 使用替换历史记录的方式刷新，防止回退导致重新登录
+            window.location.replace(window.location.origin + window.location.pathname);
         }
 
         function toggleLoginMode() {
@@ -1083,7 +1318,12 @@
             try {
                 const latestState = await fetchStateFromDatabase();
                 const draft = cloneStateSnapshot(latestState);
+                if (activeUser) {
+                    if (!draft.lastActive) draft.lastActive = { girl: 0, boy: 0 };
+                    draft.lastActive[activeUser] = Date.now();
+                }
                 const result = await mutator(draft, latestState);
+
                 const savedState = await saveData(draft);
 
                 if (!savedState) {
@@ -1323,19 +1563,40 @@
             
             const hasSysEvent = events.some(e => e.type === 'system');
             const hasUserEvent = !!state.userEvents[mmdd];
+            const hasSchedule = state.schedules && state.schedules[yyyymmdd] && state.schedules[yyyymmdd].length > 0;
 
             const dayEl = document.createElement('div');
-            dayEl.className = `calendar-day ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''} ${checked ? 'checked-in' : ''} ${hasSysEvent ? 'has-event' : ''} ${hasUserEvent ? 'has-user-event' : ''}`;
+            dayEl.className = `calendar-day ${isOther ? 'other-month' : ''} ${isToday ? 'today' : ''} ${checked ? 'checked-in' : ''} ${hasSysEvent ? 'has-event' : ''} ${hasUserEvent ? 'has-user-event' : ''} ${hasSchedule ? 'has-schedule' : ''}`;
+
             dayEl.innerHTML = `<span>${d}</span><div class="markers"></div>`;
             const markers = dayEl.querySelector('.markers');
             if (hasSysEvent) markers.innerHTML += '<span class="marker event"></span>';
             if (hasUserEvent) markers.innerHTML += '<span class="marker user-event"></span>';
+            
+            const daySchedules = state.schedules && state.schedules[yyyymmdd] ? state.schedules[yyyymmdd] : [];
+            const hasGirlSched = daySchedules.some(s => s.user === 'girl');
+            const hasBoySched = daySchedules.some(s => s.user === 'boy');
+            const hasUnknownSched = daySchedules.some(s => !s.user);
+
+            if (hasGirlSched && hasBoySched) {
+                markers.innerHTML += '<span class="marker schedule"></span>'; // 共同日程用紫色
+            } else if (hasGirlSched || (hasUnknownSched && !hasBoySched)) {
+                markers.innerHTML += '<span class="marker schedule girl"></span>'; // 只有女生
+            } else if (hasBoySched) {
+                markers.innerHTML += '<span class="marker schedule boy"></span>'; // 只有男生
+            }
+
+            if (state.dailyTasks && state.dailyTasks[yyyymmdd] && state.dailyTasks[yyyymmdd].length > 0) markers.innerHTML += '<span class="marker task"></span>';
+
             if (state.userNotes[yyyymmdd]) markers.innerHTML += '<span class="marker note"></span>';
             if (state.checkIns[yyyymmdd]) markers.innerHTML += '<span class="marker check"></span>';
             
             dayEl.onclick = () => openDayModal(y, m, d);
             document.getElementById('calendar-grid').appendChild(dayEl);
         }
+
+        let tempSchedules = [];
+        let tempDailyTasks = [];
 
         function openDayModal(y, m, d) {
             editingDate = { y, m, d };
@@ -1354,8 +1615,86 @@
             document.getElementById('day-events-list').innerHTML = events.length ? events.map(e => `<div>${e.text}</div>`).join('') : '<div style="opacity:0.5;">今天没有特殊纪念日</div>';
             document.getElementById('day-event-input').value = state.userEvents[mmdd] || '';
             document.getElementById('day-note-input').value = state.userNotes[yyyymmdd] || '';
+
+            // 初始化临时数据
+            tempSchedules = state.schedules[yyyymmdd] ? JSON.parse(JSON.stringify(state.schedules[yyyymmdd])) : [];
+            
+            renderScheduleUI();
             
             document.getElementById('modal-overlay').style.display = 'flex';
+        }
+
+        function renderScheduleUI() {
+            const list = document.getElementById('day-schedule-list');
+            if (tempSchedules.length === 0) {
+                list.innerHTML = '<div style="opacity:0.4; font-size:0.8rem; text-align:center; padding:20px; background:rgba(0,0,0,0.02); border-radius:15px; border:1px dashed #ddd;">🌸 还没添加今日日程哦</div>';
+                return;
+            }
+            // 按时间排序
+            tempSchedules.sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+            list.innerHTML = tempSchedules.map((item, index) => {
+                const isMine = item.user === currentUser;
+                const userNickname = state.nicknames && item.user ? (state.nicknames[item.user] || (item.user === 'girl' ? '女生' : '男生')) : 'TA';
+                const userTag = item.user ? `<span class="schedule-user-tag ${item.user}">${isMine ? '我' : userNickname}</span>` : '';
+                
+                return `
+                <div class="schedule-item ${item.completed ? 'completed' : ''} ${item.user || ''}">
+                    <input type="checkbox" class="schedule-checkbox" ${item.completed ? 'checked' : ''} onchange="toggleScheduleItemUI(${index})">
+                    ${userTag}
+                    <span class="schedule-time">${item.start || '??:??'} - ${item.end || '??:??'}</span>
+                    <span class="schedule-content" onclick="editScheduleItemUI(${index})">${item.content}</span>
+                    <span class="delete-icon" onclick="removeScheduleItemUI(${index})">🗑️</span>
+                </div>
+            `;}).join('');
+        }
+
+
+        function addScheduleItemUI() {
+            const start = document.getElementById('sched-start').value;
+            const end = document.getElementById('sched-end').value;
+            const content = document.getElementById('sched-text').value.trim();
+            if (!content) return alert('请输入日程内容');
+            
+            if (start && end && start >= end) {
+                return alert('结束时间必须在开始时间之后哦');
+            }
+
+            tempSchedules.push({ start, end, content, completed: false, user: currentUser });
+
+            document.getElementById('sched-start').value = '';
+            document.getElementById('sched-end').value = '';
+            document.getElementById('sched-text').value = '';
+            renderScheduleUI();
+        }
+
+        function removeScheduleItemUI(index) {
+            tempSchedules.splice(index, 1);
+            renderScheduleUI();
+        }
+
+        function toggleScheduleItemUI(index) {
+            tempSchedules[index].completed = !tempSchedules[index].completed;
+            renderScheduleUI();
+        }
+
+        function editScheduleItemUI(index) {
+            const item = tempSchedules[index];
+            const newContent = prompt('修改日程内容:', item.content);
+            if (newContent !== null && newContent.trim() !== '') {
+                item.content = newContent.trim();
+                const newStart = prompt('修改开始时间 (HH:mm):', item.start);
+                const newEnd = prompt('修改结束时间 (HH:mm):', item.end);
+                
+                if (newStart !== null && newEnd !== null) {
+                    if (newStart >= newEnd) {
+                        alert('结束时间必须在开始时间之后，修改已取消');
+                        return;
+                    }
+                    item.start = newStart;
+                    item.end = newEnd;
+                }
+                renderScheduleUI();
+            }
         }
 
         async function handleCheckIn() {
@@ -1444,9 +1783,11 @@
                 const saved = await commitStateChange((draft) => {
                     if (eventVal) draft.userEvents[mmdd] = eventVal; else delete draft.userEvents[mmdd];
                     if (noteVal) draft.userNotes[yyyymmdd] = noteVal; else delete draft.userNotes[yyyymmdd];
+                    
+                    if (tempSchedules.length > 0) draft.schedules[yyyymmdd] = tempSchedules; else delete draft.schedules[yyyymmdd];
 
                     const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
-                    appendHistoryEntry(draft, `${nickname} 更新了 ${m + 1}月${d}日 的纪念日/备注`);
+                    appendHistoryEntry(draft, `${nickname} 更新了 ${m + 1}月${d}日 的纪念日/备注/日程任务`);
                 }, { errorMessage: '纪念日保存失败，请稍后重试。' });
 
                 if (!saved) return;
@@ -1483,7 +1824,53 @@
                 return;
             }
 
+            if (currentModalType === 'task_edit') {
+                const name = document.getElementById('input-name').value.trim();
+                const points = parseInt(document.getElementById('input-points').value) || 0;
+                const desc = document.getElementById('input-desc').value.trim();
+
+                const saved = await commitStateChange((draft) => {
+                    const task = draft.tasks.find(t => t.id === editingId);
+                    if (!task) throw new Error('任务不存在');
+                    if (Date.now() - task.id >= 600000) throw new Error('发布已超过10分钟，无法修改');
+
+                    const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                    appendHistoryEntry(draft, `${nickname} 修改了任务: ${name}`);
+                    task.name = name;
+                    task.points = points;
+                    task.desc = desc;
+                }, { errorMessage: '任务发布超过10分钟，无法修改' });
+
+                if (!saved) return;
+                closeModal();
+                return;
+            }
+
+            if (currentModalType === 'post_edit') {
+                const title = document.getElementById('input-name').value.trim();
+                const content = document.getElementById('input-desc').value.trim();
+                const location = document.getElementById('input-city').value.trim();
+
+                const saved = await commitStateChange((draft) => {
+                    const post = draft.posts.find(p => p.id === editingId);
+                    if (!post) throw new Error('动态不存在');
+                    if (post.role !== currentUser) throw new Error('无权修改');
+
+                    const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                    appendHistoryEntry(draft, `${nickname} 修改了动态: ${title || '无标题'}`);
+                    post.title = title;
+                    post.content = content;
+                    post.location = location;
+                }, { errorMessage: '动态修改失败，请稍后重试。' });
+
+                if (!saved) return;
+                closeModal();
+                return;
+            }
+
             if (currentModalType === 'task_apply') {
+
+
                 const file = document.getElementById('input-file').files[0];
                 if (!file) return alert('请上传证据');
                 const reader = new FileReader();
@@ -1505,11 +1892,25 @@
                 return;
             }
 
+            if (currentModalType === 'manual_location') {
+                const city = document.getElementById('input-name').value.trim();
+                if (!city) return alert('请输入城市名称');
+                const saved = await persistLocation(currentUser, { city, time: Date.now() });
+                if (saved) {
+                    closeModal();
+                    alert(`城市已更新为: ${city}`);
+                }
+                return;
+            }
+
             if (currentModalType === 'space_post') {
                 const title = document.getElementById('input-name').value.trim();
                 const content = document.getElementById('input-desc').value.trim();
+                const manualCity = document.getElementById('input-city').value.trim();
+                const autoCity = document.getElementById('location-display').innerText.replace('📍 自动定位: ', '').replace('正在尝试获取自动定位...', '').replace('无法获取自动定位，请在上方手动输入位置', '').trim();
+                
+                const finalLocation = manualCity || autoCity || '某个浪漫的角落';
                 const file = document.getElementById('input-file').files[0];
-                const location = document.getElementById('location-display').innerText.replace('正在获取位置...', '').trim();
                 
                 if (!content && !file && !title) return alert('写点什么或发张图吧');
 
@@ -1522,7 +1923,7 @@
                             title,
                             content: content || (img ? '分享美好瞬间' : ''),
                             image: img,
-                            location: location || '某个浪漫的角落',
+                            location: finalLocation,
                             time: formatLocalTime(new Date()),
                             comments: []
                         });
@@ -1532,6 +1933,7 @@
                     if (!saved) return;
                     closeModal();
                 };
+
 
                 if (file) {
                     const reader = new FileReader();
@@ -1669,8 +2071,21 @@
             const tempEl = document.getElementById('weather-temp');
             const cityEl = document.getElementById('weather-city');
             const nickEl = document.getElementById('partner-nickname');
+            const statusDot = document.getElementById('partner-status');
+            const statusText = document.getElementById('partner-status-text');
+
+            // 更新在线状态
+            const lastActive = state.lastActive?.[otherRole] || 0;
+            const isOnline = lastActive > 0 && (Date.now() - lastActive < 120000); // 2分钟内活跃视为在线
+            
+            if (statusDot && statusText) {
+                statusDot.style.background = isOnline ? '#52c41a' : '#ccc';
+                statusDot.style.boxShadow = isOnline ? '0 0 5px #52c41a' : 'none';
+                statusText.innerText = isOnline ? '当前在线' : '离线';
+            }
 
             // 只要登录了就显示天气框，即使是加载状态
+
             weatherEl.style.display = 'flex';
             nickEl.innerText = partnerNick;
             
@@ -1731,6 +2146,46 @@
             }
         }
 
+        function changePage(module, direction) {
+            const config = PAGINATION[module];
+            if (!config) return;
+            
+            const totalItems = module === 'wishlist' ? state.wishlist.length :
+                             module === 'task' ? state.tasks.length :
+                             module === 'wish' ? state.wishes.length :
+                             module === 'history' ? state.history.length :
+                             state.posts.length;
+            
+            const totalPages = Math.ceil(totalItems / config.limit) || 1;
+            const newPage = config.page + direction;
+            
+            if (newPage >= 1 && newPage <= totalPages) {
+                config.page = newPage;
+                if (module === 'space') renderSpace();
+                else renderAll();
+            }
+        }
+
+        function renderPagination(module, totalItems, containerId) {
+            const config = PAGINATION[module];
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            
+            const totalPages = Math.ceil(totalItems / config.limit) || 1;
+            
+            if (totalPages <= 1) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            container.style.display = 'flex';
+            container.innerHTML = `
+                <button class="page-btn" ${config.page === 1 ? 'disabled' : ''} onclick="changePage('${module}', -1)">上一页</button>
+                <span class="page-info">${config.page} / ${totalPages}</span>
+                <button class="page-btn" ${config.page === totalPages ? 'disabled' : ''} onclick="changePage('${module}', 1)">下一页</button>
+            `;
+        }
+
         function renderAll() {
             if (!currentUser || !hasCompleteRoleCredentials(state, currentUser)) {
                 currentUser = null;
@@ -1774,16 +2229,86 @@
                 document.getElementById('my-request-list').innerHTML = myPendingRequests.map(req => `<div class="card request-card" style="opacity: 0.9;"><div class="card-info"><h3>${req.name}</h3><p>等待审批中...</p></div><button class="secondary-btn" onclick="deleteRequest(${req.id})">撤销</button></div>`).join('');
             } else myReqSection.style.display = 'none';
 
-            document.getElementById('wishlist-list').innerHTML = (state.wishlist || []).map(item => `<div class="card"><div class="card-info"><h3>${item.name}</h3><p>建议积分: ${item.points}</p></div><div style="display: flex; gap: 8px;">${item.targetRole === role ? `<button class="action-btn" onclick="approveWishlistItem(${item.id})">采纳</button>` : `<button class="secondary-btn delete-btn" onclick="deleteWishlistItem(${item.id})">×</button>`}</div></div>`).join('') || '<div style="opacity:0.3;text-align:center;padding:10px;">暂无计划</div>';
-            document.getElementById('task-list').innerHTML = state.tasks.map(task => `<div class="card"><div class="card-info"><h3>${task.name}</h3><p>+${task.points}</p></div>${task.creator !== role ? `<button class="action-btn" onclick="openModal('task_apply', ${task.id})">申请完成</button>` : `<button class="secondary-btn delete-btn" onclick="deleteItem('task', ${task.id})">×</button>`}</div>`).join('');
-            document.getElementById('wish-list').innerHTML = state.wishes.map(wish => `<div class="card"><div class="card-info"><h3>${wish.name}</h3><p>-${wish.points}</p></div>${wish.creator !== role ? `<button class="action-btn" onclick="confirmRedeemWish(${wish.id})">申请兑换</button>` : `<button class="secondary-btn delete-btn" onclick="deleteItem('wish', ${wish.id})">×</button>`}</div>`).join('');
-            document.getElementById('history-list').innerHTML = state.history.slice().reverse().map(h => `<div class="history-item"><span>${h.text}</span><span style="opacity:0.4;">${h.time}</span></div>`).join('') || '<div style="opacity:0.5;text-align:center;padding:10px;">暂无记录</div>';
+            // 分页数据截取辅助函数
+            const getPageItems = (list, config) => {
+                const start = (config.page - 1) * config.limit;
+                return list.slice(start, start + config.limit);
+            };
+
+            // 1. 心愿清单分页
+            const wishlistItems = state.wishlist || [];
+            document.getElementById('wishlist-list').innerHTML = getPageItems(wishlistItems, PAGINATION.wishlist).map(item => `
+                <div class="card">
+                    <div class="card-info">
+                        <h3>${item.name}</h3>
+                        <p>建议积分: ${item.points}</p>
+                        ${item.desc ? `<div style="font-size:0.75rem; opacity:0.6; margin-top:4px;">${item.desc}</div>` : ''}
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        ${item.targetRole === role ? `<button class="action-btn" onclick="approveWishlistItem(${item.id})">采纳</button>` : `<button class="secondary-btn delete-btn" onclick="deleteWishlistItem(${item.id})">×</button>`}
+                    </div>
+                </div>
+            `).join('') || '<div style="opacity:0.3;text-align:center;padding:10px;">暂无计划</div>';
+            renderPagination('wishlist', wishlistItems.length, 'wishlist-pagination');
+
+            // 2. 悬赏任务分页
+            const taskItems = state.tasks || [];
+            document.getElementById('task-list').innerHTML = getPageItems(taskItems, PAGINATION.task).map(task => {
+                const isCreator = task.creator === role;
+                const canModify = isCreator && (Date.now() - task.id < 600000); // 10分钟内可修改/删除
+                
+                return `
+                <div class="card">
+                    <div class="card-info">
+                        <h3>${task.name}</h3>
+                        <p style="color:var(--theme-primary); font-weight:bold;">+${task.points}</p>
+                        ${task.desc ? `<div style="font-size:0.8rem; opacity:0.7; margin-top:5px; background:rgba(0,0,0,0.03); padding:8px; border-radius:8px;">${task.desc}</div>` : ''}
+                        ${isCreator ? `<div style="font-size:0.7rem; color:#999; margin-top:5px;">${canModify ? '发布10分钟内可修改/删除' : '已发布超过10分钟，不可修改/删除'}</div>` : ''}
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        ${!isCreator ? `<button class="action-btn" onclick="openModal('task_apply', ${task.id})">申请完成</button>` : 
+                        (canModify ? `
+                            <button class="secondary-btn" style="padding: 4px 10px; font-size: 0.75rem;" onclick="openModal('task_edit', ${task.id})">修改</button>
+                            <button class="secondary-btn delete-btn" onclick="deleteItem('task', ${task.id})">×</button>
+                        ` : '')}
+                    </div>
+                </div>
+            `;}).join('');
+            renderPagination('task', taskItems.length, 'task-pagination');
+
+
+
+            // 3. 愿望商店分页
+            const wishItems = state.wishes || [];
+            document.getElementById('wish-list').innerHTML = getPageItems(wishItems, PAGINATION.wish).map(wish => `
+                <div class="card">
+                    <div class="card-info">
+                        <h3>${wish.name}</h3>
+                        <p style="color:#ff69b4; font-weight:bold;">-${wish.points}</p>
+                        ${wish.desc ? `<div style="font-size:0.75rem; opacity:0.6; margin-top:4px;">${wish.desc}</div>` : ''}
+                    </div>
+                    ${wish.creator !== role ? `<button class="action-btn" onclick="confirmRedeemWish(${wish.id})">申请兑换</button>` : `<button class="secondary-btn delete-btn" onclick="deleteItem('wish', ${wish.id})">×</button>`}
+                </div>
+            `).join('');
+            renderPagination('wish', wishItems.length, 'wish-pagination');
+
+            // 4. 操作记录分页
+            const historyItems = (state.history || []).slice().reverse();
+            document.getElementById('history-list').innerHTML = getPageItems(historyItems, PAGINATION.history).map(h => `
+                <div class="history-item">
+                    <span>${h.text}</span>
+                    <span style="opacity:0.4;">${h.time}</span>
+                </div>
+            `).join('') || '<div style="opacity:0.5;text-align:center;padding:10px;">暂无记录</div>';
+            renderPagination('history', historyItems.length, 'history-pagination');
         }
 
         function renderSpace() {
             const list = document.getElementById('space-list');
+            const posts = state.posts.slice().reverse();
+            const pagePosts = posts.slice((PAGINATION.space.page - 1) * PAGINATION.space.limit, PAGINATION.space.page * PAGINATION.space.limit);
 
-            list.innerHTML = state.posts.slice().reverse().map(post => {
+            list.innerHTML = pagePosts.map(post => {
                 const authorName = state.nicknames[post.role] || state.accounts[post.role];
                 return `
                 <div class="post-card">
@@ -1793,8 +2318,12 @@
                             <div class="post-author">${authorName}</div>
                             <div class="post-time">${post.time}</div>
                         </div>
-                        <button class="secondary-btn delete-btn" onclick="deletePost(${post.id})">×</button>
+                        <div style="display: flex; gap: 5px;">
+                            ${post.role === currentUser ? `<button class="secondary-btn" style="padding: 2px 8px; font-size: 0.7rem;" onclick="openModal('post_edit', ${post.id})">修改</button>` : ''}
+                            <button class="secondary-btn delete-btn" onclick="deletePost(${post.id})">×</button>
+                        </div>
                     </div>
+
                     ${post.title ? `<div class="post-title" style="font-weight: 800; font-size: 1.15rem; margin-bottom: 8px; color: var(--theme-primary);">${post.title}</div>` : ''}
                     ${post.content ? `<div class="post-content">${post.content}</div>` : ''}
                     ${post.image ? `<img src="${post.image}" class="post-image" onclick="window.open(this.src)">` : ''}
@@ -1827,6 +2356,8 @@
                     </div>
                 </div>
             `}).join('') || '<div style="opacity:0.7;text-align:center;padding:60px;color:var(--theme-text);font-style:italic;">✨ 在这里记录属于你们的时刻吧...</div>';
+            
+            renderPagination('space', posts.length, 'space-pagination');
         }
 
         async function deletePost(id) {
@@ -1898,21 +2429,31 @@
             petResetHandler();
         }
 
+        function togglePetLink() {
+            PETS_LINKED = !PETS_LINKED;
+            const btn = document.getElementById('pet-link-toggle');
+            if (btn) {
+                btn.innerText = PETS_LINKED ? '🔗 链接中' : '🔓 已解除';
+                btn.classList.toggle('active', PETS_LINKED);
+            }
+        }
+
         function updatePetVisibility() {
             const visible = !!currentUser && document.body.classList.contains('logged-in');
             const dog = document.getElementById('dog-trigger');
             const cat = document.getElementById('cat-trigger');
-            const resetBtn = document.getElementById('pet-reset-btn');
+            const controls = document.getElementById('pet-controls-container');
             [dog, cat].forEach((pet) => {
                 if (!pet) return;
                 pet.style.display = visible ? 'block' : 'none';
                 pet.style.pointerEvents = visible ? 'auto' : 'none';
             });
-            if (resetBtn) {
-                resetBtn.style.display = visible ? 'block' : 'none';
-                resetBtn.style.pointerEvents = visible ? 'auto' : 'none';
+            if (controls) {
+                controls.style.display = visible ? 'flex' : 'none';
+                controls.style.pointerEvents = visible ? 'auto' : 'none';
             }
         }
+
 
         function initPetDrag() {
             const dog = document.getElementById('dog-trigger');
@@ -2053,7 +2594,17 @@
                 cat.dataset.dragged = '0';
                 suppressPetClick.dog = false;
                 suppressPetClick.cat = false;
+
+                // 恢复默认链接状态
+                PETS_LINKED = true;
+                const linkBtn = document.getElementById('pet-link-toggle');
+                if (linkBtn) {
+                    linkBtn.innerText = '🔗 链接中';
+                    linkBtn.classList.add('active');
+                }
+
                 syncToAnchor(true);
+
                 updatePetVisibility();
             };
 
@@ -2072,16 +2623,16 @@
             window.addEventListener('wheel', preventWheelScroll, { passive: false });
 
             const bindStart = (leader, leaderKey, followEl) => (e) => {
-
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
                 e.preventDefault();
 
                 activeLeader = leader;
                 activeLeaderKey = leaderKey;
-                follower = followEl;
+                // 根据 PETS_LINKED 决定是否有跟随者
+                follower = PETS_LINKED ? followEl : null;
 
                 const leaderPos = getPos(leader);
-                const followerPos = getPos(follower);
+                const followerPos = follower ? getPos(follower) : { x: 0, y: 0 };
 
                 dragging = true;
                 setDragScrollLock(true);
@@ -2091,16 +2642,19 @@
                 startLeft = leaderPos.x;
                 startTop = leaderPos.y;
 
-                fx = followerPos.x;
-                fy = followerPos.y;
-                fvx = 0;
-                fvy = 0;
-                leaderHistory = [{ x: leaderPos.x, y: leaderPos.y, t: performance.now() }];
+                if (follower) {
+                    fx = followerPos.x;
+                    fy = followerPos.y;
+                    fvx = 0;
+                    fvy = 0;
+                    leaderHistory = [{ x: leaderPos.x, y: leaderPos.y, t: performance.now() }];
+                    ensureSpringLoop();
+                }
 
                 leader.classList.add('dragging');
                 leader.setPointerCapture(e.pointerId);
-                ensureSpringLoop();
             };
+
 
             dog.addEventListener('pointerdown', bindStart(dog, 'dog', cat));
             cat.addEventListener('pointerdown', bindStart(cat, 'cat', dog));
@@ -2223,28 +2777,60 @@
             document.getElementById('desc-group').style.display = 'block';
             document.getElementById('evidence-group').style.display = 'none';
             document.getElementById('input-name').type = 'text';
+            document.getElementById('modal-label-1').innerText = '名称';
+            document.getElementById('modal-label-2').innerText = '积分';
+            document.getElementById('modal-label-3').innerText = '描述';
             document.getElementById('input-name').value = '';
+
             document.getElementById('input-points').value = '';
             document.getElementById('input-desc').value = '';
+            document.getElementById('input-city').value = '';
+            document.getElementById('manual-location-group').style.display = 'none';
             document.getElementById('location-display').innerText = '';
 
-            if (type === 'space_post') {
+            if (type === 'manual_location') {
+                document.getElementById('modal-title').innerText = '📍 提交所在城市';
+                document.getElementById('modal-label-1').innerText = '当前城市';
+                document.getElementById('input-name').placeholder = '输入你所在的城市名';
+                document.getElementById('points-group').style.display = 'none';
+                document.getElementById('desc-group').style.display = 'none';
+                document.getElementById('manual-location-group').style.display = 'none'; // 这里用input-name作为城市输入
+                document.getElementById('location-display').innerText = '手动提交后，对方将在天气栏看到你的城市。';
+                
+                const currentLoc = state.locations[currentUser];
+                if (currentLoc?.city && currentLoc.city !== '未知') {
+                    document.getElementById('input-name').value = currentLoc.city;
+                }
+            } else if (type === 'space_post') {
                 document.getElementById('modal-title').innerText = '发布动态';
                 document.getElementById('modal-label-1').innerText = '标题 (选填)';
                 document.getElementById('modal-label-3').innerText = '此时此刻的想法...';
                 document.getElementById('points-group').style.display = 'none';
                 document.getElementById('evidence-group').style.display = 'block';
+                document.getElementById('manual-location-group').style.display = 'block'; // 发表动态时显示手动位置输入
                 document.getElementById('file-label').innerText = '配张美照';
                 
-                document.getElementById('location-display').innerText = '正在获取位置...';
+                document.getElementById('location-display').innerText = '正在尝试获取自动定位...';
                 updateLocation().then((location) => {
                     if (location?.city) {
-                        document.getElementById('location-display').innerText = `📍 ${location.city}`;
+                        document.getElementById('location-display').innerText = `📍 自动定位: ${location.city}`;
+                        document.getElementById('input-city').placeholder = `不填则使用自动定位 (${location.city})`;
                     } else {
-                        document.getElementById('location-display').innerText = '无法获取精确位置，请手动输入或留空';
+                        document.getElementById('location-display').innerText = '无法获取自动定位，请在上方手动输入位置';
                     }
                 });
+            } else if (type === 'task_edit') {
+                const task = latestState.tasks.find(t => t.id === id);
+                if (!task) return alert('任务不存在');
+                if (Date.now() - task.id >= 600000) return alert('发布已超过10分钟，无法修改');
+                
+                document.getElementById('modal-title').innerText = '修改悬赏任务';
+                document.getElementById('input-name').value = task.name;
+                document.getElementById('input-points').value = task.points;
+                document.getElementById('input-desc').value = task.desc || '';
             } else if (type === 'task_apply') {
+
+
                 document.getElementById('points-group').style.display = 'none';
                 document.getElementById('evidence-group').style.display = 'block';
             }
@@ -2336,11 +2922,16 @@
                 const item = list[idx];
                 if (idx < 0 || !item) throw new Error('目标不存在');
 
+                if (t === 'task' && (Date.now() - item.id >= 600000)) {
+                    throw new Error('发布已超过10分钟，无法删除任务');
+                }
+
                 const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
                 appendHistoryEntry(draft, `${nickname} 删除了${t === 'task' ? '任务' : '愿望'}: ${item.name}`);
                 list.splice(idx, 1);
-            }, { errorMessage: '删除失败，请稍后重试。' });
+            }, { errorMessage: t === 'task' ? '任务发布超过10分钟，无法删除' : '删除失败，请稍后重试。' });
         }
+
 
         async function deleteWishlistItem(id) { 
             if (!confirm('确定要删除这个心愿计划吗？')) return;
