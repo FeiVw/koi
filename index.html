@@ -131,7 +131,17 @@
         .post-author { font-weight: 700; font-size: 0.95rem; }
         .post-time { font-size: 0.75rem; opacity: 0.5; }
         .post-content { font-size: 0.95rem; line-height: 1.6; margin-bottom: 12px; white-space: pre-wrap; }
-        .post-image { width: 100%; border-radius: 12px; margin-bottom: 12px; cursor: pointer; object-fit: cover; max-height: 300px; }
+        .post-image { width: 100%; border-radius: 12px; margin-bottom: 12px; cursor: pointer; object-fit: cover; max-height: 500px; display: block; animation: fadeIn 0.4s ease; }
+        .post-image-placeholder {
+            width: 100%; height: 160px; background: rgba(0,0,0,0.03); border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 10px; cursor: pointer; border: 1px dashed rgba(0,0,0,0.1);
+            margin-bottom: 12px; transition: var(--transition); color: #888;
+        }
+        .post-image-placeholder:hover { background: rgba(0,0,0,0.05); border-color: var(--theme-primary); color: var(--theme-primary); }
+        .post-image-placeholder i { font-size: 1.5rem; }
+        .post-image-placeholder span { font-size: 0.8rem; font-weight: 600; }
+
         .post-location { font-size: 0.8rem; color: var(--theme-primary); display: flex; align-items: center; gap: 4px; margin-bottom: 12px; }
         
         .comment-section { border-top: 1px solid #f0f0f0; padding-top: 12px; margin-top: 12px; }
@@ -257,7 +267,7 @@
             border: none;
             box-shadow: 
                 0 15px 45px rgba(0,0,0,0.05),
-                /* 关键：通过 15px 的 spread 和 50px 的 blur，让颜色从边缘“渗入”内部并逐渐变白 */
+                /* 关键：通过 15px 的 spread 和 50px 的 blur，让颜色从边缘"渗入"内部并逐渐变白 */
                 inset 0 0 50px 10px var(--box-color, #eee); 
             transition: transform 0.3s ease;
         }
@@ -684,9 +694,11 @@
         </section>
 
         <footer class="system-footer">
-            <p style="font-size: 0.8rem; opacity: 0.4;">爱的储蓄罐 v11.0</p>
+            <p style="font-size: 0.8rem; opacity: 0.4;">爱的储蓄罐 v12.1</p>
+            <button class="reset-trigger" onclick="cleanOldImageData()" style="margin-bottom: 10px; background: rgba(250, 173, 20, 0.1); color: #faad14; border: 1px dashed #faad14;">🗑️ 清理旧图片数据 (释放空间)</button>
             <button class="reset-trigger" onclick="openResetModal()">⚠️ 重置系统数据</button>
         </footer>
+
     </main>
 
     <div class="modal-overlay" id="modal-overlay">
@@ -1086,6 +1098,43 @@
             }).format(d).replace(/\//g, '-');
         }
 
+        async function compressImage(file, maxWidth = 1200, quality = 0.7) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height *= maxWidth / width;
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxWidth) {
+                                width *= maxWidth / height;
+                                height = maxWidth;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+
         function cloneStateSnapshot(snapshot = state) {
             return normalizeState(JSON.parse(JSON.stringify(normalizeState(snapshot))));
         }
@@ -1103,10 +1152,41 @@
             if (error) throw error;
             // 如果数据库为空或记录不存在，返回规范化后的默认状态，而不是抛出错误
             if (!data?.data || isEmptyDatabaseState(data.data)) {
+                imageStore = {};  // 清空图片存储
                 return normalizeState(createDefaultState());
             }
 
-            return normalizeState(data.data);
+            // 调试：检查读取的数据大小
+            const dataSize = JSON.stringify(data.data).length;
+            console.log(`[fetchStateFromDatabase] 读取数据大小: ${(dataSize / 1024).toFixed(2)} KB`);
+
+            // 初始化图片存储（只在从数据库读取时）
+            loadImageStoreFromData(data.data);
+            
+            // 规范化状态
+            const normalized = normalizeState(data.data);
+            
+            // 清理旧的图片数据（兼容性迁移）
+            let migrated = false;
+            if (normalized.posts) {
+                normalized.posts.forEach(post => {
+                    if (post.image && !post.imageId) {
+                        // 发现旧格式图片数据，需要迁移
+                        console.log('[迁移] 发现旧图片数据，正在迁移...');
+                        const imageId = generateImageId();
+                        imageStore[imageId] = post.image;
+                        post.imageId = imageId;
+                        delete post.image;
+                        migrated = true;
+                    }
+                });
+            }
+            
+            if (migrated) {
+                console.log('[迁移] 图片数据迁移完成，已保存到 imageStore');
+            }
+            
+            return normalized;
         }
 
         async function syncStateFromDatabase({ preserveCurrentUser = true, silent = false } = {}) {
@@ -1290,17 +1370,33 @@
             }
 
             try {
+                // 将图片存储作为 data 的一部分，避免表结构问题
+                const dataWithImages = {
+                    ...snapshot,
+                    _imageStore: imageStore  // 图片存储作为 data 的子字段
+                };
+
+                // 调试：检查数据大小
+                const dataSize = JSON.stringify(dataWithImages).length;
+                console.log(`[saveData] 数据大小: ${(dataSize / 1024).toFixed(2)} KB`);
+                
+                if (dataSize > 5000000) {  // 超过 5MB 警告
+                    console.warn('[saveData] 数据量过大，可能导致写入失败');
+                }
+
                 const { error } = await client
                     .from(DATABASE_CONFIG.table)
-                    .upsert({ id: DATABASE_CONFIG.rowId, data: snapshot }, { onConflict: 'id' });
+                    .upsert({ 
+                        id: DATABASE_CONFIG.rowId, 
+                        data: dataWithImages
+                    }, { onConflict: 'id' });
 
                 if (error) {
-                    console.error('Database sync error:', error.message, error.details);
-                    if (error.code === '42P01') {
-                        console.error(`错误：${DATABASE_CONFIG.table} 表不存在，请在 Supabase SQL Editor 执行建表脚本。`);
-                    }
+                    console.error('Database sync error:', error.message, error.details, error.hint);
+                    alert(`数据库同步失败: ${error.message}\n提示: ${error.hint || '请检查网络连接'}`);
                     return null;
                 }
+
 
                 const freshState = await fetchStateFromDatabase();
                 state = freshState;
@@ -1308,6 +1404,7 @@
                 return freshState;
             } catch (e) {
                 console.error('Database sync failed:', e);
+                alert(`数据库同步异常: ${e.message}`);
                 return null;
             }
         }
@@ -1852,7 +1949,7 @@
                 const manualCity = document.getElementById('input-city').value.trim();
                 const file = document.getElementById('input-file').files[0];
 
-                const updatePostData = async (img = null) => {
+                const updatePostData = async (imageId = null) => {
                     const saved = await commitStateChange((draft) => {
                         const post = draft.posts.find(p => p.id === editingId);
                         if (!post) throw new Error('动态不存在');
@@ -1863,7 +1960,12 @@
                         post.title = title;
                         post.content = content;
                         if (manualCity) post.location = manualCity;
-                        if (img) post.image = img;
+                        if (imageId !== null) {
+                            // 新图片或清空图片
+                            post.imageId = imageId;
+                            // 兼容性：清除旧的 image 字段
+                            delete post.image;
+                        }
                     }, { errorMessage: '动态修改失败，请稍后重试。' });
 
                     if (!saved) return;
@@ -1871,9 +1973,10 @@
                 };
 
                 if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => updatePostData(e.target.result);
-                    reader.readAsDataURL(file);
+                    const compressedBase64 = await compressImage(file);
+                    const newImageId = generateImageId();
+                    imageStore[newImageId] = compressedBase64;
+                    await updatePostData(newImageId);
                 } else {
                     await updatePostData();
                 }
@@ -1882,28 +1985,26 @@
 
 
             if (currentModalType === 'task_apply') {
-
-
                 const file = document.getElementById('input-file').files[0];
                 if (!file) return alert('请上传证据');
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const saved = await commitStateChange((draft) => {
-                        const task = draft.tasks.find(t => t.id === editingId);
-                        if (!task) throw new Error('任务不存在');
+                
+                const compressedBase64 = await compressImage(file, 1000, 0.6); // 任务证明压缩率可以高一点
+                const saved = await commitStateChange((draft) => {
+                    const task = draft.tasks.find(t => t.id === editingId);
+                    if (!task) throw new Error('任务不存在');
 
-                        const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
-                        draft.requests.push({ id: Date.now(), type: 'task', name: task.name, points: task.points, desc: task.desc, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl', image: e.target.result });
-                        appendHistoryEntry(draft, `${nickname} 提交了任务 ${task.name} 的完成申请`);
-                    }, { errorMessage: '申请发送失败，请稍后重试。' });
+                    const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
+                    draft.requests.push({ id: Date.now(), type: 'task', name: task.name, points: task.points, desc: task.desc, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl', image: compressedBase64 });
+                    appendHistoryEntry(draft, `${nickname} 提交了任务 ${task.name} 的完成申请`);
+                }, { errorMessage: '申请发送失败，请稍后重试。' });
 
-                    if (!saved) return;
+                if (saved) {
                     closeModal();
                     alert('申请已发送');
-                };
-                reader.readAsDataURL(file);
+                }
                 return;
             }
+
 
             if (currentModalType === 'manual_location') {
                 const city = document.getElementById('input-name').value.trim();
@@ -1927,15 +2028,15 @@
                 
                 if (!content && !file && !title) return alert('写点什么或发张图吧');
 
-                const createPostData = async (img = null) => {
+                const createPostData = async (imageId = null) => {
                     const saved = await commitStateChange((draft) => {
                         const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
                         draft.posts.push({
                             id: Date.now(),
                             role: currentUser,
                             title,
-                            content: content || (img ? '分享美好瞬间' : ''),
-                            image: img,
+                            content: content || (imageId ? '分享美好瞬间' : ''),
+                            imageId: imageId,  // 只存储图片ID，不存储Base64
                             location: finalLocation,
                             time: formatLocalTime(new Date()),
                             comments: []
@@ -1949,14 +2050,16 @@
 
 
                 if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => createPostData(e.target.result);
-                    reader.readAsDataURL(file);
+                    const compressedBase64 = await compressImage(file);
+                    const imageId = generateImageId();
+                    imageStore[imageId] = compressedBase64;  // 存储到图片仓库
+                    await createPostData(imageId);
                 } else {
                     await createPostData();
                 }
                 return;
             }
+
 
             const name = document.getElementById('input-name').value;
             const points = parseInt(document.getElementById('input-points').value) || 0;
@@ -2339,8 +2442,16 @@
 
                     ${post.title ? `<div class="post-title" style="font-weight: 800; font-size: 1.15rem; margin-bottom: 8px; color: var(--theme-primary);">${post.title}</div>` : ''}
                     ${post.content ? `<div class="post-content">${post.content}</div>` : ''}
-                    ${post.image ? `<img src="${post.image}" class="post-image" onclick="window.open(this.src)">` : ''}
+                    ${(post.image || post.imageId) ? `
+                        <div id="post-img-container-${post.id}">
+                            <div class="post-image-placeholder" onclick="loadPostImage(${post.id})">
+                                <span style="font-size: 1.2rem;">🖼️</span>
+                                <span>点击加载图片</span>
+                            </div>
+                        </div>
+                    ` : ''}
                     ${post.location ? `<div class="post-location">📍 ${post.location}</div>` : ''}
+
                     
                     <div class="comment-section">
                         ${(post.comments || []).map((comment, cIdx) => {
@@ -2372,6 +2483,61 @@
             
             renderPagination('space', posts.length, 'space-pagination');
         }
+
+        async function loadPostImage(postId) {
+            const container = document.getElementById(`post-img-container-${postId}`);
+            const post = state.posts.find(p => p.id === postId);
+            if (!post || !container) return;
+            
+            // 兼容旧数据：如果还有 image 字段，直接使用
+            if (post.image) {
+                container.innerHTML = `<img src="${post.image}" class="post-image" onclick="window.open(this.src)" title="点击放大查看">`;
+                return;
+            }
+            
+            // 新逻辑：使用 imageId 从分离存储中加载
+            if (!post.imageId) return;
+            
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">加载中...</div>';
+            
+            const base64Data = await loadImageFromStore(post.imageId);
+            if (base64Data) {
+                container.innerHTML = `<img src="${base64Data}" class="post-image" onclick="window.open(this.src)" title="点击放大查看">`;
+            } else {
+                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #ff4d4f;">图片加载失败</div>';
+            }
+        }
+
+        // 图片分离存储系统：将图片从主 state 中分离，减少每次操作的同步负担
+        // imageStore 结构：{ [imageId]: base64String }
+        let imageStore = {};
+
+        // 生成唯一图片 ID
+        function generateImageId() {
+            return `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        }
+
+        // 从数据库加载图片存储
+        function loadImageStoreFromData(rawState) {
+            if (rawState && rawState._imageStore) {
+                imageStore = rawState._imageStore;
+            } else {
+                imageStore = {};
+            }
+        }
+
+        async function loadImageFromStore(imageId) {
+            // 直接从内存中的 imageStore 获取
+            return imageStore[imageId] || null;
+        }
+
+        // 初始化时加载图片存储
+        function initImageStore(rawState) {
+            loadImageStoreFromData(rawState);
+            console.log('Image store initialized, images:', Object.keys(imageStore).length);
+        }
+
+
 
         async function deletePost(id) {
             if (!confirm('确定删除这条动态吗？')) return;
@@ -2773,6 +2939,41 @@
             document.getElementById('modal-form').style.display = 'block'; 
             document.getElementById('day-detail').style.display = 'none'; 
             document.getElementById('modal-overlay').style.display = 'flex'; 
+        }
+
+        async function cleanOldImageData() {
+            if (!currentUser) return alert('请先登录后再进行此操作');
+            if (!confirm('⚠️ 这将清理所有动态中的旧格式图片数据，释放存储空间。\n\n文字内容和评论会保留，但图片将无法恢复。\n\n确定要执行吗？')) return;
+
+            try {
+                const latestState = await fetchStateFromDatabase();
+                let cleanedCount = 0;
+
+                // 清理 posts 中的旧图片数据
+                if (latestState.posts) {
+                    latestState.posts.forEach(post => {
+                        if (post.image && typeof post.image === 'string' && post.image.startsWith('data:image')) {
+                            delete post.image;
+                            cleanedCount++;
+                        }
+                    });
+                }
+
+                // 清理 imageStore
+                const imageStoreSize = Object.keys(imageStore).length;
+                imageStore = {};
+
+                // 保存清理后的数据
+                const savedState = await saveData(latestState);
+                if (!savedState) {
+                    throw new Error('保存失败');
+                }
+
+                alert(`✅ 清理完成！\n\n清理了 ${cleanedCount} 条旧格式图片数据\n清理了 ${imageStoreSize} 个图片存储项\n\n现在应该可以正常使用了！`);
+            } catch (e) {
+                console.error('清理失败:', e);
+                alert(`清理失败: ${e.message}\n\n请尝试重置系统数据`);
+            }
         }
 
         async function openModal(type, id = null) {
