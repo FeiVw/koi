@@ -198,6 +198,437 @@
         .cancel-btn { background: #eee; }
         .confirm-btn { background: var(--theme-primary); color: white; }
 
+        /* 恋爱空间邮票布局 */
+        .stamp-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(3, auto);
+            gap: 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 20px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+            width: fit-content;
+            margin: 0 auto;
+        }
+
+        .stamp-item {
+            aspect-ratio: 1 / 1.3;
+            background-image: url('fig/iroiro/邮票小.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 8px 18px;
+            margin: -0.5px; /* 轻微重叠，消除白线，体现连接感 */
+        }
+
+        .stamp-item:hover {
+            transform: scale(1.08) rotate(2deg);
+            z-index: 10;
+        }
+
+        /* 恋爱空间入口枢纽 */
+        #love-hub-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #fff;
+            background-image: radial-gradient(#ffe4e6 1px, transparent 1px);
+            background-size: 20px 20px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 4500;
+            animation: hubFadeIn 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        @keyframes hubFadeIn {
+            from { opacity: 0; transform: scale(1.1); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .love-hub-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            max-width: 600px;
+            padding: 40px;
+        }
+
+        .love-hub-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            padding: 20px;
+            border-radius: 20px;
+        }
+
+        .love-hub-item:hover {
+            transform: translateY(-15px) scale(1.1);
+            background: rgba(255, 105, 180, 0.05);
+        }
+
+        .love-hub-icon {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
+        }
+
+        .love-hub-label {
+            font-size: 1rem;
+            font-weight: 900;
+            color: #ff69b4;
+            letter-spacing: 2px;
+        }
+
+        .love-hub-close {
+            position: absolute;
+            bottom: 60px;
+            padding: 12px 45px;
+            border-radius: 50px;
+            background: white;
+            border: 2px solid #ff69b4;
+            color: #ff69b4;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.2);
+        }
+
+        .love-hub-close:hover {
+            background: #ff69b4;
+            color: white;
+            box-shadow: 0 8px 20px rgba(255, 105, 180, 0.4);
+        }
+
+        @media (max-width: 480px) {
+            .love-hub-container { grid-template-columns: 1fr; gap: 20px; }
+            .love-hub-icon { width: 80px; height: 80px; }
+        }
+
+        /* 首页入口按钮 */
+        .home-space-entry {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 30px;
+            background: white;
+            border-radius: 20px;
+            margin: 30px auto;
+            max-width: 400px;
+            cursor: pointer;
+            border: 2px solid #fff0f6;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.02);
+            transition: all 0.3s;
+        }
+
+        .home-space-entry:hover {
+            transform: translateY(-3px);
+            border-color: #ffc0cb;
+            box-shadow: 0 15px 30px rgba(255, 182, 193, 0.2);
+        }
+
+        .home-space-entry .left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .home-space-entry img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+
+        .home-space-entry span {
+            font-weight: 900;
+            font-size: 1.1rem;
+            color: #444;
+        }
+
+        .home-space-entry .arrow {
+            font-size: 1.2rem;
+            color: #ff69b4;
+            font-weight: 900;
+        }
+
+        .stamp-preview-container {
+            width: 85%;
+            height: 65%;
+            overflow: hidden;
+            border-radius: 2px;
+            margin-bottom: 4px;
+            background: #f9f9f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stamp-preview-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .stamp-text {
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-align: center;
+            color: #444;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            line-height: 1.2;
+            padding: 0 2px;
+        }
+
+        /* 大邮票详情 */
+        #post-detail-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 6000;
+            padding: 20px;
+        }
+
+        .large-stamp {
+            width: 100%;
+            max-width: 420px;
+            aspect-ratio: 1 / 1.45;
+            background-image: url('fig/iroiro/邮票大.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            padding: 55px 50px 70px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: stampPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes stampPop {
+            from { opacity: 0; transform: scale(0.5) translateY(50px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .large-stamp-title {
+            font-size: 1.1rem;
+            font-weight: 900;
+            margin-bottom: 12px;
+            color: #222;
+            text-align: center;
+            width: calc(100% - 10px);
+            border-bottom: 1px dashed rgba(0,0,0,0.1);
+            padding-bottom: 8px;
+        }
+
+        .large-stamp-content {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            color: #444;
+            width: calc(100% - 10px);
+            max-height: 120px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            text-align: left;
+            font-weight: 500;
+            padding: 0 5px;
+        }
+
+        .large-stamp-img-container {
+            width: calc(100% - 10px);
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: rgba(0,0,0,0.02);
+            border-radius: 4px;
+            border: 1px solid rgba(0,0,0,0.05);
+            margin: 0 auto;
+        }
+
+        .large-stamp-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .large-stamp-close {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: var(--transition);
+        }
+        
+        .large-stamp-close:hover { transform: rotate(90deg); background: #f0f0f0; }
+
+        .large-stamp-meta {
+            position: absolute;
+            bottom: 35px;
+            left: 45px;
+            right: 45px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #888;
+            font-weight: 700;
+        }
+
+        @media (max-width: 480px) {
+            /* 邮票网格移动端适配 */
+            .stamp-grid { 
+                grid-template-columns: repeat(3, 1fr); 
+                gap: 0; 
+                padding: 10px;
+            }
+            .stamp-item {
+                padding: 8px 6px 14px;
+            }
+            .stamp-text {
+                font-size: 0.55rem;
+            }
+            .stamp-preview-container {
+                width: 80%;
+                height: 60%;
+            }
+            
+            /* 大邮票移动端适配 */
+            .large-stamp { 
+                padding: 40px 30px 50px; 
+                max-width: 320px;
+            }
+            .large-stamp-title {
+                font-size: 0.95rem;
+            }
+            .large-stamp-content {
+                font-size: 0.85rem;
+                max-height: 80px;
+            }
+            .large-stamp-close {
+                top: 15px;
+                right: 15px;
+                width: 28px;
+                height: 28px;
+                font-size: 1rem;
+            }
+            .large-stamp-meta {
+                bottom: 25px;
+                left: 30px;
+                right: 30px;
+                font-size: 0.6rem;
+            }
+            
+            /* 恋爱空间枢纽移动端适配 */
+            #love-hub-overlay h2 {
+                font-size: 1.2rem !important;
+                margin-bottom: 20px !important;
+            }
+            .love-hub-container { 
+                grid-template-columns: repeat(3, 1fr); 
+                gap: 15px; 
+                padding: 15px;
+            }
+            .love-hub-icon { 
+                width: 60px; 
+                height: 60px; 
+            }
+            .love-hub-label {
+                font-size: 0.75rem;
+                letter-spacing: 1px;
+            }
+            .love-hub-item {
+                padding: 10px;
+                gap: 8px;
+            }
+            .love-hub-close {
+                bottom: 30px;
+                padding: 10px 30px;
+                font-size: 0.85rem;
+            }
+            
+            /* 首页入口按钮移动端适配 */
+            .home-space-entry {
+                padding: 15px 20px;
+                margin: 20px 10px;
+                max-width: calc(100% - 20px);
+            }
+            .home-space-entry img {
+                width: 40px;
+                height: 40px;
+            }
+            .home-space-entry span {
+                font-size: 0.95rem;
+            }
+            
+            /* 恋爱空间页面移动端适配 */
+            .space-section {
+                padding: 15px !important;
+            }
+            .space-nav {
+                padding: 10px 15px !important;
+            }
+            .space-page-title {
+                font-size: 1rem !important;
+            }
+            body.space-mode-active main {
+                padding: 10px;
+            }
+        }
+
+        /* 全屏恋爱空间模式 */
+        body.space-mode-active header,
+        body.space-mode-active main > section:not(.space-section),
+        body.space-mode-active footer {
+            display: none !important;
+        }
+
+        body.space-mode-active main {
+            max-width: 1200px;
+            padding: 20px;
+        }
+
+        body.space-mode-active .space-section {
+            margin-top: 0;
+            min-height: 100vh;
+            background: var(--theme-bg);
+            border: none;
+            box-shadow: none;
+        }
+
         #setup-overlay, #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--theme-bg); display: none; flex-direction: column; align-items: center; z-index: 2000; overflow-y: auto; padding: 40px 0; }
         
         /* 初始隐藏页面，防止加载闪现 */
@@ -475,6 +906,13 @@
             #pet-origin-anchor { width: 24px !important; height: 0 !important; }
             .card { padding: 15px; flex-direction: column; align-items: flex-start; gap: 12px; }
             .card > div:last-child { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+            
+            /* 移动端宠物大小减半 */
+            .dog-img, .dog-block {
+                width: 65px !important;
+                height: 65px !important;
+                font-size: 1.2rem !important;  /* 字体大小也相应调整 */
+            }
         }
     </style>
 </head>
@@ -684,10 +1122,45 @@
             <div id="history-pagination" class="pagination-controls"></div>
         </section>
 
-        <section class="feature-box bg-space space-section">
+        <section class="home-space-entry" onclick="toggleLoveHub(true)">
+            <div class="left">
+                <img src="fig/iroiro/恋爱空间.png" alt="Love Space Icon">
+                <span>进入恋爱空间</span>
+            </div>
+            <div class="arrow">➜</div>
+        </section>
+
+        <!-- 恋爱空间枢纽界面 -->
+        <div id="love-hub-overlay">
+            <h2 class="love-hub-title" style="font-size: 1.5rem; margin-bottom: 40px; font-weight: 900; color: #ff69b4;">☁️ 恋爱空间枢纽</h2>
+            <div class="love-hub-container">
+                <div class="love-hub-item" onclick="alert('花园正在建设中...')">
+                    <img src="fig/iroiro/花园.png" class="love-hub-icon" alt="Garden">
+                    <span class="love-hub-label">花园</span>
+                </div>
+                <div class="love-hub-item" onclick="alert('小窝正在建设中...')">
+                    <img src="fig/iroiro/小窝.png" class="love-hub-icon" alt="Nest">
+                    <span class="love-hub-label">小窝</span>
+                </div>
+                <div class="love-hub-item" onclick="openLoveSpace()">
+                    <img src="fig/iroiro/恋爱空间.png" class="love-hub-icon" alt="Love Space Entrance">
+                    <span class="love-hub-label">恋爱空间 (邮票)</span>
+                </div>
+            </div>
+            <button class="love-hub-close" onclick="toggleLoveHub(false)">返回主页</button>
+        </div>
+
+        <section id="space-section" class="feature-box bg-space space-section" style="padding-top: 60px; display: none;">
+            <div class="space-nav">
+                <div class="space-page-title">💌 恋爱空间</div>
+                <button class="secondary-btn" style="background: white;" onclick="exitSpaceMode(false)">返回枢纽</button>
+            </div>
             <div class="section-header">
                 <h2 class="section-title">☁️ 恋爱空间</h2>
-                <button class="add-btn" onclick="openModal('space_post')">+</button>
+                <div style="display: flex; gap: 10px;">
+                    <button class="add-btn" onclick="openModal('space_post')" title="发布动态">+</button>
+                    <button id="toggle-space-mode" class="action-btn" style="padding: 6px 15px; font-size: 0.8rem;" onclick="exitSpaceMode(true)">🌌 返回主页</button>
+                </div>
             </div>
             <div id="space-list"></div>
             <div id="space-pagination" class="pagination-controls"></div>
@@ -1041,7 +1514,7 @@
             task: { page: 1, limit: 5 },
             wish: { page: 1, limit: 5 },
             history: { page: 1, limit: 8 },
-            space: { page: 1, limit: 5 }
+            space: { page: 1, limit: 12 }
         };
 
         let PETS_LINKED = true;
@@ -1994,7 +2467,7 @@
                     if (!task) throw new Error('任务不存在');
 
                     const nickname = draft.nicknames[currentUser] || draft.accounts[currentUser];
-                    draft.requests.push({ id: Date.now(), type: 'task', name: task.name, points: task.points, desc: task.desc, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl', image: compressedBase64 });
+                    draft.requests.push({ id: Date.now(), type: 'task', taskId: task.id, name: task.name, points: task.points, desc: task.desc, requester: currentUser, targetRole: currentUser === 'girl' ? 'boy' : 'girl', image: compressedBase64 });
                     appendHistoryEntry(draft, `${nickname} 提交了任务 ${task.name} 的完成申请`);
                 }, { errorMessage: '申请发送失败，请稍后重试。' });
 
@@ -2351,8 +2824,8 @@
                 return list.slice(start, start + config.limit);
             };
 
-            // 1. 心愿清单分页
-            const wishlistItems = state.wishlist || [];
+            // 1. 心愿清单分页（新发布的排在最上面）
+            const wishlistItems = (state.wishlist || []).slice().reverse();
             document.getElementById('wishlist-list').innerHTML = getPageItems(wishlistItems, PAGINATION.wishlist).map(item => `
                 <div class="card">
                     <div class="card-info">
@@ -2367,8 +2840,8 @@
             `).join('') || '<div style="opacity:0.3;text-align:center;padding:10px;">暂无计划</div>';
             renderPagination('wishlist', wishlistItems.length, 'wishlist-pagination');
 
-            // 2. 悬赏任务分页
-            const taskItems = state.tasks || [];
+            // 2. 悬赏任务分页（新发布的排在最上面）
+            const taskItems = (state.tasks || []).slice().reverse();
             document.getElementById('task-list').innerHTML = getPageItems(taskItems, PAGINATION.task).map(task => {
                 const isCreator = task.creator === role;
                 const canModify = isCreator && (Date.now() - task.id < 600000); // 10分钟内可修改/删除
@@ -2394,8 +2867,8 @@
 
 
 
-            // 3. 愿望商店分页
-            const wishItems = state.wishes || [];
+            // 3. 愿望商店分页（新发布的排在最上面）
+            const wishItems = (state.wishes || []).slice().reverse();
             document.getElementById('wish-list').innerHTML = getPageItems(wishItems, PAGINATION.wish).map(wish => `
                 <div class="card">
                     <div class="card-info">
@@ -2419,93 +2892,151 @@
             renderPagination('history', historyItems.length, 'history-pagination');
         }
 
+        function toggleLoveHub(show) {
+            const hub = document.getElementById('love-hub-overlay');
+            if (show) {
+                if (!currentUser) return showLogin();
+                hub.style.display = 'flex';
+                document.body.style.overflow = 'hidden';
+            } else {
+                hub.style.display = 'none';
+                document.body.style.overflow = '';
+            }
+        }
+
+        function openLoveSpace() {
+            toggleLoveHub(false);
+            const spaceSection = document.getElementById('space-section');
+            spaceSection.style.display = 'block';
+            document.body.classList.add('space-mode-active');
+            renderSpace();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function exitSpaceMode(toHome = false) {
+            document.body.classList.remove('space-mode-active');
+            document.getElementById('space-section').style.display = 'none';
+            if (!toHome) {
+                toggleLoveHub(true);
+            } else {
+                toggleLoveHub(false);
+            }
+        }
+
+        function toggleSpaceMode() {
+            // 这个函数被旧代码调用，可以重定向到全屏模式逻辑
+            openLoveSpace();
+        }
+
         function renderSpace() {
             const list = document.getElementById('space-list');
             const posts = state.posts.slice().reverse();
             const pagePosts = posts.slice((PAGINATION.space.page - 1) * PAGINATION.space.limit, PAGINATION.space.page * PAGINATION.space.limit);
 
-            list.innerHTML = pagePosts.map(post => {
-                const authorName = state.nicknames[post.role] || state.accounts[post.role];
-                return `
-                <div class="post-card">
-                    <div class="post-header">
-                        <div class="post-avatar">${post.role === 'girl' ? '👩' : '👨'}</div>
-                        <div class="post-meta">
-                            <div class="post-author">${authorName}</div>
-                            <div class="post-time">${post.time}</div>
-                        </div>
-                        <div style="display: flex; gap: 5px;">
-                            ${post.role === currentUser ? `<button class="secondary-btn" style="padding: 2px 8px; font-size: 0.7rem;" onclick="openModal('post_edit', ${post.id})">修改</button>` : ''}
-                            <button class="secondary-btn delete-btn" onclick="deletePost(${post.id})">×</button>
-                        </div>
-                    </div>
-
-                    ${post.title ? `<div class="post-title" style="font-weight: 800; font-size: 1.15rem; margin-bottom: 8px; color: var(--theme-primary);">${post.title}</div>` : ''}
-                    ${post.content ? `<div class="post-content">${post.content}</div>` : ''}
-                    ${(post.image || post.imageId) ? `
-                        <div id="post-img-container-${post.id}">
-                            <div class="post-image-placeholder" onclick="loadPostImage(${post.id})">
-                                <span style="font-size: 1.2rem;">🖼️</span>
-                                <span>点击加载图片</span>
+            // 使用邮票网格布局
+            list.innerHTML = `
+                <div class="stamp-grid">
+                    ${pagePosts.map(post => {
+                        const authorName = state.nicknames[post.role] || state.accounts[post.role];
+                        return `
+                        <div class="stamp-item" onclick="openPostDetail(${post.id})">
+                            <div class="stamp-preview-container">
+                                ${post.imageId || post.image ? `<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-post-id="${post.id}" class="stamp-preview-img lazy-stamp-img">` : '<span style="font-size:1.5rem;">✍️</span>'}
                             </div>
+                            <div class="stamp-text">${post.title || post.content || '未命名动态'}</div>
                         </div>
-                    ` : ''}
-                    ${post.location ? `<div class="post-location">📍 ${post.location}</div>` : ''}
-
-                    
-                    <div class="comment-section">
-                        ${(post.comments || []).map((comment, cIdx) => {
-                            const commentAuthor = state.nicknames[comment.role] || state.accounts[comment.role];
-                            return `
-                            <div class="comment-item">
-                                <span class="comment-author">${commentAuthor}:</span>
-                                <span class="comment-content">${comment.text}</span>
-                                <span class="reply-btn" onclick="showReplyInput(${post.id}, ${cIdx})">回复</span>
-                                ${(comment.replies || []).map(reply => {
-                                    const replyAuthor = state.nicknames[reply.role] || state.accounts[reply.role];
-                                    return `
-                                    <div class="reply-item">
-                                        <span class="comment-author">${replyAuthor}</span>
-                                        <span style="opacity:0.6;">回复</span>
-                                        <span class="comment-author">${commentAuthor}:</span>
-                                        <span class="comment-content">${reply.text}</span>
-                                    </div>
-                                    `}).join('')}
-                            </div>
-                        `}).join('')}
-                        <div class="comment-input-group">
-                            <input type="text" placeholder="说点什么..." id="comment-input-${post.id}" onkeyup="if(event.keyCode==13) addComment(${post.id})">
-                            <button class="action-btn" style="padding: 4px 12px; font-size: 0.8rem;" onclick="addComment(${post.id})">评论</button>
-                        </div>
-                    </div>
+                        `;
+                    }).join('')}
                 </div>
-            `}).join('') || '<div style="opacity:0.7;text-align:center;padding:60px;color:var(--theme-text);font-style:italic;">✨ 在这里记录属于你们的时刻吧...</div>';
+            `;
+            
+            // 延迟加载邮票缩略图
+            setTimeout(() => {
+                document.querySelectorAll('.lazy-stamp-img').forEach(async img => {
+                    const postId = parseInt(img.dataset.postId);
+                    const post = state.posts.find(p => p.id === postId);
+                    if (post) {
+                        if (post.image) {
+                            // 旧格式：直接使用 post.image
+                            img.src = post.image;
+                        } else if (post.imageId) {
+                            // 新格式：从 imageStore 加载
+                            console.log(`[renderSpace] 正在加载图片: ${post.imageId}`);
+                            const data = await loadImageFromStore(post.imageId);
+                            if (data) {
+                                img.src = data;
+                                console.log(`[renderSpace] 图片加载成功: ${post.imageId}`);
+                            } else {
+                                console.warn(`[renderSpace] 图片未找到: ${post.imageId}, imageStore keys:`, Object.keys(imageStore));
+                                img.style.opacity = '0.3';
+                            }
+                        }
+                    }
+                    img.classList.remove('lazy-stamp-img');
+                });
+            }, 100);
             
             renderPagination('space', posts.length, 'space-pagination');
         }
 
-        async function loadPostImage(postId) {
-            const container = document.getElementById(`post-img-container-${postId}`);
+        async function openPostDetail(postId) {
             const post = state.posts.find(p => p.id === postId);
-            if (!post || !container) return;
+            if (!post) return;
+
+            const overlay = document.getElementById('post-detail-overlay');
+            const titleEl = document.getElementById('large-stamp-title');
+            const contentEl = document.getElementById('large-stamp-content');
+            const imgContainer = document.getElementById('large-stamp-img-container');
+            const authorEl = document.getElementById('large-stamp-author');
+            const timeEl = document.getElementById('large-stamp-time');
+            const editBtn = document.getElementById('edit-post-btn');
+            const deleteBtn = document.getElementById('delete-post-btn');
+
+            titleEl.innerText = post.title || '无标题';
+            contentEl.innerText = post.content || '';
+            authorEl.innerText = `BY: ${state.nicknames[post.role] || state.accounts[post.role]}`;
+            timeEl.innerText = post.time.split(' ')[0]; // 只显示日期
+
+            imgContainer.innerHTML = '<div style="color:#999;font-size:0.8rem;">正在加载图片...</div>';
             
-            // 兼容旧数据：如果还有 image 字段，直接使用
-            if (post.image) {
-                container.innerHTML = `<img src="${post.image}" class="post-image" onclick="window.open(this.src)" title="点击放大查看">`;
-                return;
-            }
-            
-            // 新逻辑：使用 imageId 从分离存储中加载
-            if (!post.imageId) return;
-            
-            container.innerHTML = '<div style="text-align: center; padding: 20px; color: #999;">加载中...</div>';
-            
-            const base64Data = await loadImageFromStore(post.imageId);
-            if (base64Data) {
-                container.innerHTML = `<img src="${base64Data}" class="post-image" onclick="window.open(this.src)" title="点击放大查看">`;
+            if (post.imageId || post.image) {
+                let imgSrc = post.image;
+                if (!imgSrc && post.imageId) {
+                    console.log(`[openPostDetail] 正在加载大图: ${post.imageId}`);
+                    imgSrc = await loadImageFromStore(post.imageId);
+                    if (!imgSrc) {
+                        console.error(`[openPostDetail] 图片加载失败，imageStore 中不存在: ${post.imageId}`);
+                        console.log('[openPostDetail] 当前 imageStore keys:', Object.keys(imageStore));
+                    }
+                }
+                if (imgSrc) {
+                    imgContainer.innerHTML = `<img src="${imgSrc}" class="large-stamp-img" onclick="window.open(this.src)">`;
+                } else {
+                    imgContainer.innerHTML = `<div style="color:#ff4d4f;font-size:0.85rem;">
+                        ⚠️ 图片加载失败<br>
+                        <span style="font-size:0.7rem;color:#999;">可能原因：数据同步未完成或图片数据丢失</span>
+                    </div>`;
+                }
             } else {
-                container.innerHTML = '<div style="text-align: center; padding: 20px; color: #ff4d4f;">图片加载失败</div>';
+                imgContainer.innerHTML = '<div style="color:#eee;font-size:3rem;opacity:0.2;">✨</div>';
             }
+
+            // 设置按钮
+            if (post.role === currentUser) {
+                document.getElementById('large-stamp-actions').style.display = 'flex';
+                editBtn.onclick = () => { closePostDetail(); openModal('post_edit', post.id); };
+                deleteBtn.onclick = () => { if(confirm('确定删除吗？')){ closePostDetail(); deletePost(post.id); } };
+            } else {
+                document.getElementById('large-stamp-actions').style.display = 'none';
+            }
+
+            overlay.style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // 禁止主页滚动
+        }
+
+        function closePostDetail() {
+            document.getElementById('post-detail-overlay').style.display = 'none';
+            document.body.style.overflow = '';
         }
 
         // 图片分离存储系统：将图片从主 state 中分离，减少每次操作的同步负担
@@ -2517,13 +3048,15 @@
             return `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         }
 
-        // 从数据库加载图片存储
+        // 从数据库加载图片存储（合并模式，保护刚上传还未同步的图片）
         function loadImageStoreFromData(rawState) {
             if (rawState && rawState._imageStore) {
-                imageStore = rawState._imageStore;
-            } else {
-                imageStore = {};
+                // 合并而非覆盖：数据库中的图片 + 本地新上传的图片
+                // 本地新图片优先级更高，防止竞态条件导致丢失
+                imageStore = { ...rawState._imageStore, ...imageStore };
+                console.log('[ImageStore] 合并后图片数量:', Object.keys(imageStore).length);
             }
+            // 如果数据库中没有图片存储，保留本地的 imageStore（不清空）
         }
 
         async function loadImageFromStore(imageId) {
@@ -3088,8 +3621,17 @@
                     draft.scores[req.requester] -= req.points;
                     appendHistoryEntry(draft, `${nickname} 准了 ${requesterName} 的愿望兑换: ${req.name} (-${req.points} 积分)`);
                 } else {
+                    // 任务类型：批准后删除对应的悬赏任务
                     draft.scores[req.requester] += req.points;
                     appendHistoryEntry(draft, `${nickname} 准了 ${requesterName} 的任务完成: ${req.name} (+${req.points} 积分)`);
+                    
+                    // 删除对应的悬赏任务（如果有 taskId）
+                    if (req.taskId) {
+                        const taskIdx = draft.tasks.findIndex(t => t.id === req.taskId);
+                        if (taskIdx >= 0) {
+                            draft.tasks.splice(taskIdx, 1);
+                        }
+                    }
                 }
                 removeRequestById(id, draft);
             }, { errorMessage: '审批失败，请稍后重试。' });
@@ -3206,5 +3748,24 @@
         function animateParticles() { ctx.clearRect(0, 0, canvas.width, canvas.height); particles = particles.filter(p => { p.update(); p.draw(); return p.opacity > 0; }); requestAnimationFrame(animateParticles); }
         animateParticles(); loadData(); initPetDrag();
     </script>
+    <!-- 大邮票详情弹窗 -->
+    <div id="post-detail-overlay" onclick="if(event.target===this) closePostDetail()">
+        <div class="large-stamp">
+            <button class="large-stamp-close" onclick="closePostDetail()">×</button>
+            <div id="large-stamp-title" class="large-stamp-title"></div>
+            <div id="large-stamp-content" class="large-stamp-content"></div>
+            <div class="large-stamp-img-container" id="large-stamp-img-container"></div>
+            <div class="large-stamp-meta">
+                <span id="large-stamp-author"></span>
+                <span id="large-stamp-time"></span>
+            </div>
+            
+            <!-- 操作按钮 -->
+            <div id="large-stamp-actions" style="position: absolute; bottom: -50px; display: flex; gap: 10px;">
+                <button id="edit-post-btn" class="secondary-btn" style="background: white; border: 1px solid white;">修改</button>
+                <button id="delete-post-btn" class="secondary-btn delete-btn" style="background: white; border: 1px solid #ff4d4f;">删除</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
