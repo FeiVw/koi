@@ -865,17 +865,71 @@
             backdrop-filter: blur(5px);
             cursor: default;
             display: none;
-            min-width: 110px;
-            white-space: nowrap;
         }
-        .pet-timer span {
-            display: inline-block;
-            min-width: 50px;
+
+        /* 登出按钮下方的累计陪伴时间 */
+        .pet-timer-header {
+            position: absolute;
+            right: 20px;
+            top: 55px;
+            padding: 5px 12px;
+            font-size: 0.75rem;
+            color: var(--theme-text);
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: var(--shadow);
+            z-index: 2100;
         }
-        #pet-session-plus {
-            display: inline-block;
-            min-width: 55px;
-            text-align: right;
+
+        /* 时间增加烟花动画 */
+        .time-firework {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--theme-primary);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px var(--theme-primary);
+            z-index: 9999;
+            pointer-events: none;
+            animation: fireworkAnim 1.5s ease-out forwards;
+        }
+
+        @keyframes fireworkAnim {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.5);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(2);
+            }
+        }
+
+        /* 爱心粒子 */
+        .heart-particle {
+            position: fixed;
+            font-size: 1rem;
+            pointer-events: none;
+            z-index: 9998;
+            animation: heartFloat 1.2s ease-out forwards;
+        }
+
+        @keyframes heartFloat {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--tx), var(--ty)) scale(1);
+            }
         }
 
         #pet-reset-btn { display: none; } /* 旧按钮隐藏，使用新容器中的按钮 */
@@ -1099,21 +1153,21 @@
             #pet-reset-btn { left: 12px; top: 12px; padding: 5px 10px; font-size: 0.7rem; }
             
             /* 手机端宠物控制按钮缩小 */
-            .pet-controls { 
-                left: 10px; 
-                top: 10px; 
-                gap: 5px; 
+            .pet-controls {
+                left: 10px;
+                top: 10px;
+                gap: 5px;
             }
-            .pet-ctrl-btn, .pet-timer {
+            .pet-ctrl-btn {
                 padding: 4px 8px;
                 font-size: 0.65rem;
-                min-width: 90px;
+                min-width: 80px;
             }
-            .pet-timer span {
-                min-width: 40px;
-            }
-            #pet-session-plus {
-                min-width: 45px;
+            .pet-timer-header {
+                right: 12px;
+                top: 48px;
+                padding: 4px 10px;
+                font-size: 0.65rem;
             }
             
             /* 手机端在非首页（如恋爱空间、枢纽页）隐藏宠物控制按钮，防止堆叠 */
@@ -1240,10 +1294,6 @@
         <button class="pet-ctrl-btn" onclick="resetPetsToCenter()">宠物复位</button>
         <button id="pet-link-toggle" class="pet-ctrl-btn active" onclick="togglePetLink()">🔗 链接中</button>
         <button class="pet-ctrl-btn" onclick="openModal('manual_location')">📍 提交城市</button>
-        <div id="pet-timer-display" class="pet-timer">
-            <span>⏱️ <span id="pet-timer-value">0</span>s</span>
-            <span id="pet-session-plus" style="color: var(--theme-primary); display: none;"> +0.0s</span>
-        </div>
     </div>
         <span id="pet-session-plus" style="color: #ff4d4f; font-size: 0.7rem; font-weight: bold; display: none;"> +0.0s</span>
     </div>
@@ -1252,6 +1302,9 @@
     <header>
 
         <button class="logout-btn" onclick="handleLogout()">登出</button>
+        <div id="pet-timer-display" class="pet-timer-header" style="display: none;">
+            ⏱️ 累积陪伴: <span id="pet-timer-value">0</span>s
+        </div>
         <div class="role-switcher" style="display: none;">
             <div class="role-indicator"></div>
             <button class="role-btn active" onclick="switchRole('girl')">女生</button>
@@ -2085,6 +2138,7 @@
             updatePetVisibility();
             document.getElementById('login-overlay').style.display = 'none';
             renderAll();
+            showPetTimerIfLoggedIn(); // 显示累计陪伴时间
             updateLocation();
             createHeartEffect();
         }
@@ -3164,8 +3218,9 @@
                 currentUser = null;
                 return showLogin();
             }
-            
+
             renderDogClicks();
+            showPetTimerIfLoggedIn(); // 确保累计陪伴时间显示
             const role = currentUser;
             const nickname = getDisplayName(role);
             document.getElementById('role-nickname').innerText = nickname;
@@ -3717,6 +3772,15 @@
             }
         }
 
+        // 登录后显示累计陪伴时间
+        function showPetTimerIfLoggedIn() {
+            const display = document.getElementById('pet-timer-display');
+            if (currentUser && display) {
+                display.style.display = 'block';
+                renderPetCompTime();
+            }
+        }
+
 
         let suppressPetClick = { dog: false, cat: false };
         let petResetHandler = () => {};
@@ -4008,23 +4072,6 @@
             currentHoldPet = petType;
             petHoldStartTime = Date.now();
             localAccumulatedTime = 0; // 重置本地累计
-            
-            const timerDisplay = document.getElementById('pet-timer-display');
-            const sessionPlus = document.getElementById('pet-session-plus');
-            if (timerDisplay) timerDisplay.style.display = 'block';
-            if (sessionPlus) sessionPlus.style.display = 'inline';
-
-            if (petHoldTimerId) clearInterval(petHoldTimerId);
-            petHoldTimerId = setInterval(() => {
-                if (isPetCompTimeResetting) return; // 清零中跳过
-                
-                const now = Date.now();
-                const totalElapsed = (now - petHoldStartTime) / 1000;
-                
-                // 更新UI上的单次时长显示
-                const sessionPlus = document.getElementById('pet-session-plus');
-                if (sessionPlus) sessionPlus.innerText = ` +${totalElapsed.toFixed(1)}s`;
-            }, 100);
         }
 
         async function handlePetUp(petType) {
@@ -4043,7 +4090,10 @@
                 // 立即更新本地显示（乐观更新）
                 state.petCompTime[currentUser] = (state.petCompTime[currentUser] || 0) + totalTime;
                 renderPetCompTime();
-                
+
+                // 显示烟花动画效果
+                showTimeFirework(totalTime);
+
                 // 后台同步到数据库，不触发全局渲染避免跳动
                 commitStateChange((draft) => {
                     // 强制使用数据库中的值加上本次时长，避免竞态
@@ -4054,15 +4104,53 @@
                 }, { render: false, errorMessage: null });
             }
 
-            const sessionPlus = document.getElementById('pet-session-plus');
-            if (sessionPlus) {
-                sessionPlus.innerText = " +0.0s";
-                sessionPlus.style.display = 'none';
-            }
-            
             currentHoldPet = null;
             petHoldStartTime = null;
             localAccumulatedTime = 0;
+        }
+
+        // 显示时间增加的烟花动画效果
+        function showTimeFirework(seconds) {
+            const firework = document.createElement('div');
+            firework.className = 'time-firework';
+            firework.innerHTML = `+${seconds.toFixed(1)}s`;
+            document.body.appendChild(firework);
+
+            // 生成爱心粒子
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+            const heartColors = ['💕', '💖', '💗', '💝', '❤️', '🩷', '🩶'];
+            const particleCount = 12;
+
+            for (let i = 0; i < particleCount; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'heart-particle';
+                heart.innerText = heartColors[Math.floor(Math.random() * heartColors.length)];
+
+                // 随机角度和距离
+                const angle = (Math.PI * 2 / particleCount) * i + Math.random() * 0.5;
+                const distance = 80 + Math.random() * 60;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance - 30; // 稍微向上飘
+
+                heart.style.left = centerX + 'px';
+                heart.style.top = centerY + 'px';
+                heart.style.setProperty('--tx', tx + 'px');
+                heart.style.setProperty('--ty', ty + 'px');
+                heart.style.fontSize = (0.8 + Math.random() * 0.6) + 'rem';
+
+                document.body.appendChild(heart);
+
+                // 动画结束后移除
+                setTimeout(() => {
+                    heart.remove();
+                }, 1200);
+            }
+
+            // 动画结束后移除主元素
+            setTimeout(() => {
+                firework.remove();
+            }, 1500);
         }
 
         async function handleDogClick(e, petType) {
