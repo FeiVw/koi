@@ -1181,6 +1181,11 @@
         <button class="pet-ctrl-btn" onclick="openModal('manual_location')">📍 提交城市</button>
     </div>
 
+    <!-- 宠物互动计时器显示 -->
+    <div id="pet-timer-display" style="position: fixed; top: 120px; left: 20px; background: rgba(255,255,255,0.8); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--theme-primary); color: var(--theme-primary); font-size: 0.8rem; font-weight: bold; z-index: 2100; display: none; backdrop-filter: blur(5px); box-shadow: var(--shadow);">
+        ⏱️ 陪伴中: <span id="pet-timer-value">0.0</span>s
+    </div>
+
 
     <header>
 
@@ -3834,6 +3839,9 @@
                 if (e.pointerType === 'mouse' && e.button !== 0) return;
                 e.preventDefault();
 
+                // 开始长按计时
+                handlePetDown(leaderKey);
+
                 activeLeader = leader;
                 activeLeaderKey = leaderKey;
                 // 根据 PETS_LINKED 决定是否有跟随者
@@ -3879,6 +3887,10 @@
 
             const onPointerEnd = (e) => {
                 if (!dragging || !activeLeader) return;
+                
+                // 停止计时
+                if (activeLeaderKey) handlePetUp(activeLeaderKey);
+
                 dragging = false;
                 setDragScrollLock(false);
                 activeLeader.classList.remove('dragging');
@@ -3896,6 +3908,47 @@
             window.addEventListener('pointerup', onPointerEnd);
             window.addEventListener('pointercancel', onPointerEnd);
             window.addEventListener('pageshow', () => updatePetVisibility());
+            
+            // 全局清理长按状态，防止鼠标移开后计时器一直跑
+            window.addEventListener('mouseup', () => { if(currentHoldPet) handlePetUp(currentHoldPet); });
+            window.addEventListener('touchend', () => { if(currentHoldPet) handlePetUp(currentHoldPet); });
+        }
+
+        let petHoldStartTime = null;
+        let petHoldTimerId = null;
+        let currentHoldPet = null;
+
+        function handlePetDown(petType) {
+            if (!currentUser) return;
+            currentHoldPet = petType;
+            petHoldStartTime = Date.now();
+            
+            const timerDisplay = document.getElementById('pet-timer-display');
+            const timerValue = document.getElementById('pet-timer-value');
+            if (timerDisplay) timerDisplay.style.display = 'block';
+
+            if (petHoldTimerId) clearInterval(petHoldTimerId);
+            petHoldTimerId = setInterval(() => {
+                const elapsed = (Date.now() - petHoldStartTime) / 1000;
+                if (timerValue) timerValue.innerText = elapsed.toFixed(1);
+                
+                // 每按住一秒左右加一个特效或震动（可选，先只改计时）
+            }, 100);
+        }
+
+        function handlePetUp(petType) {
+            if (currentHoldPet !== petType) return;
+            
+            if (petHoldTimerId) {
+                clearInterval(petHoldTimerId);
+                petHoldTimerId = null;
+            }
+            
+            const timerDisplay = document.getElementById('pet-timer-display');
+            if (timerDisplay) timerDisplay.style.display = 'none';
+            
+            currentHoldPet = null;
+            petHoldStartTime = null;
         }
 
         async function handleDogClick(e, petType) {
@@ -3909,16 +3962,23 @@
             const pet = document.getElementById(`${petType}-trigger`);
             if (!pet) return;
 
+            // 1. 立即执行本地动画和UI更新（零延迟体验）
             pet.classList.remove('animate');
             void pet.offsetWidth;
             pet.classList.add('animate');
 
-            await commitStateChange((draft) => {
-                if (!draft.dogClicks) draft.dogClicks = { girl: 0, boy: 0 };
-                draft.dogClicks[currentUser]++;
-            }, { render: false, errorMessage: '宠物点击保存失败，请稍后重试。' });
-
+            // 立即增加本地数值（乐观更新）
+            if (!state.dogClicks) state.dogClicks = { girl: 0, boy: 0 };
+            state.dogClicks[currentUser]++;
             renderDogClicks();
+
+            // 2. 后台同步到数据库，不等待（不阻塞UI）
+            // 每次点击发起一个同步任务，使用最新的本地计数值
+            commitStateChange((draft) => {
+                if (!draft.dogClicks) draft.dogClicks = { girl: 0, boy: 0 };
+                // 确保同步的是最新的本地点击总数，避免多次点击被覆盖
+                draft.dogClicks[currentUser] = state.dogClicks[currentUser];
+            }, { render: false, errorMessage: null }); // 报错静默，防止弹窗打断互动
         }
 
         function animateScore(target) {
