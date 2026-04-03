@@ -1066,6 +1066,13 @@
             header { padding: 12px 12px 10px; gap: 10px; }
             .logout-btn { right: 12px; top: 12px; padding: 5px 10px; font-size: 0.7rem; }
             #pet-reset-btn { left: 12px; top: 12px; padding: 5px 10px; font-size: 0.7rem; }
+            
+            /* 手机端在非首页（如恋爱空间、枢纽页）隐藏宠物控制按钮，防止堆叠 */
+            body.space-mode-active .pet-controls, 
+            body.hub-active .pet-controls { 
+                display: none !important; 
+            }
+
             .score-label { font-size: 0.82rem; }
             .score-value { font-size: 1.85rem; }
             .header-top-actions { gap: 8px !important; }
@@ -3220,9 +3227,11 @@
                 if (!currentUser) return showLogin();
                 hub.style.display = 'flex';
                 document.body.style.overflow = 'hidden';
+                document.body.classList.add('hub-active');
             } else {
                 hub.style.display = 'none';
                 document.body.style.overflow = '';
+                document.body.classList.remove('hub-active');
             }
         }
 
