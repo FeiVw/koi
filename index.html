@@ -208,12 +208,14 @@
             background: rgba(255, 255, 255, 0.4);
             border-radius: 20px;
             box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
-            width: fit-content;
+            width: 100%; /* 恢复铺满 */
+            max-width: 900px; /* 设置一个合理的大上限，防止超宽屏太稀疏 */
             margin: 0 auto;
         }
 
         .stamp-item {
             aspect-ratio: 1 / 1.3;
+            width: 100%; /* 强制占据格子的全部宽度 */
             background-image: url('fig/iroiro/邮票小.png');
             background-size: 100% 100%;
             background-repeat: no-repeat;
@@ -225,7 +227,7 @@
             align-items: center;
             justify-content: center;
             padding: 12px 8px 18px;
-            margin: -0.5px; /* 轻微重叠，消除白线，体现连接感 */
+            margin: -0.5px;
         }
 
         .stamp-item:hover {
@@ -233,85 +235,99 @@
             z-index: 10;
         }
 
-        /* 恋爱空间入口枢纽 */
+        /* 恋爱空间入口枢纽 - 改造为基于背景图的精确交互 */
         #love-hub-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: #fff;
-            background-image: radial-gradient(#ffe4e6 1px, transparent 1px);
-            background-size: 20px 20px;
+            background: var(--theme-bg); /* 与首页一致的背景色 */
             display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 4500;
-            animation: hubFadeIn 0.5s cubic-bezier(0.23, 1, 0.32, 1);
         }
 
-        @keyframes hubFadeIn {
-            from { opacity: 0; transform: scale(1.1); }
-            to { opacity: 1; transform: scale(1); }
+        .love-hub-bg-container {
+            position: relative;
+            height: 90vh; /* 占据屏幕高度的大部分 */
+            aspect-ratio: 564 / 1000; /* 根据背景图 564x1000 的比例设定 */
+            max-width: 95vw;
+            background-image: url('fig/iroiro/恋爱空间背景.png');
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+            background-position: center;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            overflow: hidden;
         }
 
-        .love-hub-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 40px;
-            max-width: 600px;
-            padding: 40px;
-        }
-
-        .love-hub-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            padding: 20px;
-            border-radius: 20px;
-        }
-
-        .love-hub-item:hover {
-            transform: translateY(-15px) scale(1.1);
-            background: rgba(255, 105, 180, 0.05);
-        }
-
-        .love-hub-icon {
-            width: 100px;
-            height: 100px;
-            object-fit: contain;
-            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
-        }
-
-        .love-hub-label {
-            font-size: 1rem;
-            font-weight: 900;
-            color: #ff69b4;
-            letter-spacing: 2px;
-        }
-
-        .love-hub-close {
+        .love-hub-interactive-area {
             position: absolute;
-            bottom: 60px;
-            padding: 12px 45px;
-            border-radius: 50px;
-            background: white;
-            border: 2px solid #ff69b4;
-            color: #ff69b4;
-            font-weight: 800;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 5px 15px rgba(255, 105, 180, 0.2);
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
         }
 
-        .love-hub-close:hover {
-            background: #ff69b4;
-            color: white;
-            box-shadow: 0 8px 20px rgba(255, 105, 180, 0.4);
+        .love-hub-hotspot {
+            position: absolute;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .love-hub-hotspot img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* 根据图片元素位置精确校准百分比坐标 */
+        /* 小窝：中心信封蝴蝶结上的房子 */
+        .hotspot-nest { 
+            top: 42.5%; 
+            left: 41.5%; 
+            width: 18.5%; 
+            height: 14%; 
+        }
+        
+        /* 恋爱空间（邮票）：左下角的小店 */
+        .hotspot-space { 
+            top: 74.5%; 
+            left: 12.3%; 
+            width: 28.5%; 
+            height: 15.5%; 
+        }
+        
+        /* 花园：右下角的拱门 */
+        .hotspot-garden { 
+            top: 73.5%; 
+            left: 44.2%; 
+            width: 46.5%; 
+            height: 16.5%; 
+        }
+
+        .love-hub-close-new {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid var(--theme-primary);
+            color: var(--theme-primary);
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
         }
 
         @media (max-width: 480px) {
@@ -414,12 +430,12 @@
 
         .large-stamp {
             width: 100%;
-            max-width: 420px;
+            max-width: 480px;
             aspect-ratio: 1 / 1.45;
             background-image: url('fig/iroiro/邮票大.png');
             background-size: 100% 100%;
             background-repeat: no-repeat;
-            padding: 55px 50px 70px;
+            padding: 60px 55px 80px;
             position: relative;
             display: flex;
             flex-direction: column;
@@ -498,9 +514,9 @@
 
         .large-stamp-meta {
             position: absolute;
-            bottom: 35px;
-            left: 45px;
-            right: 45px;
+            bottom: 45px;
+            left: 60px;
+            right: 60px;
             display: flex;
             justify-content: space-between;
             font-size: 0.7rem;
@@ -511,11 +527,17 @@
         @media (max-width: 480px) {
             /* 邮票网格移动端适配 */
             .stamp-grid { 
-                grid-template-columns: repeat(3, 1fr); 
+                grid-template-columns: repeat(3, 1fr);
+                grid-template-rows: repeat(4, auto);
                 gap: 0; 
                 padding: 10px;
+                width: 95%; /* 手机端占据屏幕的大部分 */
+                max-width: 320px;
             }
             .stamp-item {
+                min-width: 0;
+                width: auto;
+                height: auto;
                 padding: 8px 6px 14px;
             }
             .stamp-text {
@@ -528,8 +550,13 @@
             
             /* 大邮票移动端适配 */
             .large-stamp { 
-                padding: 40px 30px 50px; 
-                max-width: 320px;
+                padding: 45px 35px 60px; 
+                max-width: 340px;
+            }
+            .large-stamp-meta {
+                bottom: 30px;
+                left: 40px;
+                right: 40px;
             }
             .large-stamp-title {
                 font-size: 0.95rem;
@@ -553,32 +580,18 @@
             }
             
             /* 恋爱空间枢纽移动端适配 */
-            #love-hub-overlay h2 {
-                font-size: 1.2rem !important;
-                margin-bottom: 20px !important;
+            .love-hub-interactive-area {
+                aspect-ratio: 9 / 16; /* 移动端假设是竖屏比例 */
+                width: 90%;
             }
-            .love-hub-container { 
-                grid-template-columns: repeat(3, 1fr); 
-                gap: 15px; 
-                padding: 15px;
+            .love-hub-bg-container {
+                background-size: cover; /* 手机端背景铺满 */
             }
-            .love-hub-icon { 
-                width: 60px; 
-                height: 60px; 
-            }
-            .love-hub-label {
-                font-size: 0.75rem;
-                letter-spacing: 1px;
-            }
-            .love-hub-item {
-                padding: 10px;
-                gap: 8px;
-            }
-            .love-hub-close {
-                bottom: 30px;
-                padding: 10px 30px;
-                font-size: 0.85rem;
-            }
+            .hotspot-garden { top: 15%; left: 10%; width: 80%; height: 20%; }
+            .hotspot-nest { top: 40%; left: 10%; width: 80%; height: 20%; }
+            .hotspot-space { top: 65%; left: 10%; width: 80%; height: 20%; }
+            .hotspot-label { font-size: 0.8rem; padding: 6px 15px; }
+            .love-hub-close-new { bottom: 20px; padding: 10px 35px; font-size: 0.8rem; }
             
             /* 首页入口按钮移动端适配 */
             .home-space-entry {
@@ -607,6 +620,162 @@
             body.space-mode-active main {
                 padding: 10px;
             }
+            
+            /* 筛选搜索栏移动端适配 */
+            .filter-search-bar {
+                gap: 6px;
+            }
+            .filter-select {
+                min-width: 80px;
+                padding: 6px 10px;
+                font-size: 0.75rem;
+            }
+            .search-input {
+                min-width: 100px;
+                max-width: 180px;
+                padding: 6px 10px;
+                font-size: 0.75rem;
+            }
+            .sort-btn {
+                padding: 6px 10px;
+                font-size: 0.75rem;
+            }
+        }
+
+        /* 筛选和搜索控件样式 */
+        .filter-search-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0 15px;
+            align-items: center;
+        }
+
+        .filter-select, .search-input {
+            padding: 8px 12px;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            outline: none;
+            background: white;
+            transition: var(--transition);
+        }
+
+        .filter-select {
+            min-width: 100px;
+            cursor: pointer;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 150px;
+            max-width: 250px;
+        }
+
+        .search-input:focus, .filter-select:focus {
+            border-color: var(--theme-primary);
+        }
+
+        .sort-btn {
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: var(--transition);
+            border: 1px solid rgba(0,0,0,0.1);
+            background: white;
+            white-space: nowrap;
+        }
+
+        .sort-btn.active {
+            background: var(--theme-primary);
+            color: white;
+            border-color: var(--theme-primary);
+        }
+
+        .sort-btn:hover {
+            transform: scale(1.02);
+        }
+
+        /* 邮票红点通知 */
+        .stamp-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 10px;
+            height: 10px;
+            background: #ff4d4f;
+            border-radius: 50%;
+            border: 2px solid white;
+            z-index: 5;
+        }
+
+        /* 评论区样式 */
+        .stamp-comments-section {
+            margin-top: 20px;
+            max-width: 480px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .comments-header {
+            font-size: 0.9rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .comments-list {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+        }
+
+        .comment-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .comment-item:last-child {
+            border-bottom: none;
+        }
+
+        .comment-author {
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: #ff69b4;
+        }
+
+        .comment-text {
+            font-size: 0.85rem;
+            color: #444;
+            margin: 5px 0;
+        }
+
+        .comment-time {
+            font-size: 0.7rem;
+            color: #999;
+        }
+
+        .comment-input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        .reply-btn {
+            font-size: 0.7rem;
+            color: #ff69b4;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px 8px;
+        }
+
+        .reply-btn:hover {
+            text-decoration: underline;
         }
 
         /* 全屏恋爱空间模式 */
@@ -1103,6 +1272,15 @@
                 <h2 class="section-title">✨ 悬赏任务</h2>
                 <button class="add-btn" onclick="openModal('task')">+</button>
             </div>
+            <div class="filter-search-bar">
+                <select class="filter-select" id="task-filter" onchange="applyTaskFilter()">
+                    <option value="all">全部</option>
+                    <option value="girl">只看女生</option>
+                    <option value="boy">只看男生</option>
+                </select>
+                <input type="text" class="search-input" id="task-search" placeholder="搜索任务..." oninput="applyTaskFilter()">
+                <button class="sort-btn" id="task-sort-btn" onclick="toggleTaskSort()">按分数排序</button>
+            </div>
             <div id="task-list" class="card-list"></div>
             <div id="task-pagination" class="pagination-controls"></div>
         </section>
@@ -1112,12 +1290,24 @@
                 <h2 class="section-title">🎁 愿望商店</h2>
                 <button class="add-btn" onclick="openModal('wish')">+</button>
             </div>
+            <div class="filter-search-bar">
+                <select class="filter-select" id="wish-filter" onchange="applyWishFilter()">
+                    <option value="all">全部</option>
+                    <option value="girl">只看女生</option>
+                    <option value="boy">只看男生</option>
+                </select>
+                <input type="text" class="search-input" id="wish-search" placeholder="搜索愿望..." oninput="applyWishFilter()">
+                <button class="sort-btn" id="wish-sort-btn" onclick="toggleWishSort()">按分数排序</button>
+            </div>
             <div id="wish-list" class="card-list"></div>
             <div id="wish-pagination" class="pagination-controls"></div>
         </section>
 
         <section class="feature-box bg-history">
             <div class="section-header"><h2 class="section-title">📜 操作记录</h2></div>
+            <div class="filter-search-bar">
+                <input type="text" class="search-input" id="history-search" placeholder="搜索记录..." oninput="applyHistoryFilter()" style="max-width: 300px;">
+            </div>
             <div id="history-list" class="history-list"></div>
             <div id="history-pagination" class="pagination-controls"></div>
         </section>
@@ -1132,22 +1322,19 @@
 
         <!-- 恋爱空间枢纽界面 -->
         <div id="love-hub-overlay">
-            <h2 class="love-hub-title" style="font-size: 1.5rem; margin-bottom: 40px; font-weight: 900; color: #ff69b4;">☁️ 恋爱空间枢纽</h2>
-            <div class="love-hub-container">
-                <div class="love-hub-item" onclick="alert('花园正在建设中...')">
-                    <img src="fig/iroiro/花园.png" class="love-hub-icon" alt="Garden">
-                    <span class="love-hub-label">花园</span>
-                </div>
-                <div class="love-hub-item" onclick="alert('小窝正在建设中...')">
-                    <img src="fig/iroiro/小窝.png" class="love-hub-icon" alt="Nest">
-                    <span class="love-hub-label">小窝</span>
-                </div>
-                <div class="love-hub-item" onclick="openLoveSpace()">
-                    <img src="fig/iroiro/恋爱空间.png" class="love-hub-icon" alt="Love Space Entrance">
-                    <span class="love-hub-label">恋爱空间 (邮票)</span>
+            <div class="love-hub-bg-container">
+                <div class="love-hub-interactive-area">
+                    <!-- 花园热区 -->
+                    <div class="love-hub-hotspot hotspot-garden" onclick="alert('花园正在建设中...')" title="浪漫花园"></div>
+                    
+                    <!-- 恋爱空间热区 (中间房子) -->
+                    <div class="love-hub-hotspot hotspot-nest" onclick="openLoveSpace()" title="恋爱空间"></div>
+                    
+                    <!-- 温馨小窝热区 (左下角小店) -->
+                    <div class="love-hub-hotspot hotspot-space" onclick="alert('小窝正在建设中...')" title="温馨小窝"></div>
                 </div>
             </div>
-            <button class="love-hub-close" onclick="toggleLoveHub(false)">返回主页</button>
+            <button class="love-hub-close-new" onclick="toggleLoveHub(false)">返回主页</button>
         </div>
 
         <section id="space-section" class="feature-box bg-space space-section" style="padding-top: 60px; display: none;">
@@ -1161,6 +1348,14 @@
                     <button class="add-btn" onclick="openModal('space_post')" title="发布动态">+</button>
                     <button id="toggle-space-mode" class="action-btn" style="padding: 6px 15px; font-size: 0.8rem;" onclick="exitSpaceMode(true)">🌌 返回主页</button>
                 </div>
+            </div>
+            <div class="filter-search-bar">
+                <select class="filter-select" id="space-filter" onchange="applySpaceFilter()">
+                    <option value="all">全部</option>
+                    <option value="girl">只看女生</option>
+                    <option value="boy">只看男生</option>
+                </select>
+                <input type="text" class="search-input" id="space-search" placeholder="搜索动态..." oninput="applySpaceFilter()">
             </div>
             <div id="space-list"></div>
             <div id="space-pagination" class="pagination-controls"></div>
@@ -1506,16 +1701,33 @@
 
         let state = createDefaultState();
 
+
         let currentUser = null; // 当前登录的用户 (girl 或 boy)
 
-        // 分页状态管理
+        // 判断是否为移动端
+        function isMobile() {
+            return window.innerWidth <= 480;
+        }
+
+        // 分页状态管理（支持移动端自适应）
         const PAGINATION = {
-            wishlist: { page: 1, limit: 5 },
-            task: { page: 1, limit: 5 },
-            wish: { page: 1, limit: 5 },
-            history: { page: 1, limit: 8 },
+            wishlist: { page: 1, get limit() { return isMobile() ? 3 : 5; } },
+            task: { page: 1, get limit() { return isMobile() ? 3 : 5; } },
+            wish: { page: 1, get limit() { return isMobile() ? 3 : 5; } },
+            history: { page: 1, get limit() { return isMobile() ? 5 : 8; } },
             space: { page: 1, limit: 12 }
         };
+
+        // 筛选和搜索状态
+        const FILTER_STATE = {
+            task: { filter: 'all', search: '', sortByPoints: false },
+            wish: { filter: 'all', search: '', sortByPoints: false },
+            space: { filter: 'all', search: '' },
+            history: { search: '' }
+        };
+
+        // 邮票未读评论状态
+        let unreadComments = {}; // { postId: true }
 
         let PETS_LINKED = true;
 
@@ -2735,19 +2947,111 @@
             }
         }
 
+        // 筛选和搜索函数
+        function applyTaskFilter() {
+            const filterEl = document.getElementById('task-filter');
+            const searchEl = document.getElementById('task-search');
+            if (filterEl) FILTER_STATE.task.filter = filterEl.value;
+            if (searchEl) FILTER_STATE.task.search = searchEl.value.trim().toLowerCase();
+            PAGINATION.task.page = 1;
+            renderAll();
+        }
+
+        function toggleTaskSort() {
+            FILTER_STATE.task.sortByPoints = !FILTER_STATE.task.sortByPoints;
+            const btn = document.getElementById('task-sort-btn');
+            if (btn) btn.classList.toggle('active', FILTER_STATE.task.sortByPoints);
+            PAGINATION.task.page = 1;
+            renderAll();
+        }
+
+        function applyWishFilter() {
+            const filterEl = document.getElementById('wish-filter');
+            const searchEl = document.getElementById('wish-search');
+            if (filterEl) FILTER_STATE.wish.filter = filterEl.value;
+            if (searchEl) FILTER_STATE.wish.search = searchEl.value.trim().toLowerCase();
+            PAGINATION.wish.page = 1;
+            renderAll();
+        }
+
+        function toggleWishSort() {
+            FILTER_STATE.wish.sortByPoints = !FILTER_STATE.wish.sortByPoints;
+            const btn = document.getElementById('wish-sort-btn');
+            if (btn) btn.classList.toggle('active', FILTER_STATE.wish.sortByPoints);
+            PAGINATION.wish.page = 1;
+            renderAll();
+        }
+
+        function applySpaceFilter() {
+            const filterEl = document.getElementById('space-filter');
+            const searchEl = document.getElementById('space-search');
+            if (filterEl) FILTER_STATE.space.filter = filterEl.value;
+            if (searchEl) FILTER_STATE.space.search = searchEl.value.trim().toLowerCase();
+            PAGINATION.space.page = 1;
+            renderSpace();
+        }
+
+        function applyHistoryFilter() {
+            const searchEl = document.getElementById('history-search');
+            if (searchEl) FILTER_STATE.history.search = searchEl.value.trim().toLowerCase();
+            PAGINATION.history.page = 1;
+            renderAll();
+        }
+
+        // 筛选辅助函数
+        function filterByRole(items, filter, creatorField = 'creator') {
+            if (filter === 'all') return items;
+            return items.filter(item => item[creatorField] === filter);
+        }
+
+        function filterBySearch(items, search, fields) {
+            if (!search) return items;
+            return items.filter(item => 
+                fields.some(field => {
+                    const val = item[field];
+                    return val && String(val).toLowerCase().includes(search);
+                })
+            );
+        }
+
+        function sortByPointsDesc(items) {
+            return [...items].sort((a, b) => (b.points || 0) - (a.points || 0));
+        }
+
         function changePage(module, direction) {
             const config = PAGINATION[module];
             if (!config) return;
-            
-            const totalItems = module === 'wishlist' ? state.wishlist.length :
-                             module === 'task' ? state.tasks.length :
-                             module === 'wish' ? state.wishes.length :
-                             module === 'history' ? state.history.length :
-                             state.posts.length;
-            
+
+            // 计算筛选后的总数量
+            let totalItems;
+            if (module === 'wishlist') {
+                totalItems = (state.wishlist || []).length;
+            } else if (module === 'task') {
+                let items = (state.tasks || []).slice().reverse();
+                items = filterByRole(items, FILTER_STATE.task.filter, 'creator');
+                items = filterBySearch(items, FILTER_STATE.task.search, ['name', 'desc']);
+                totalItems = items.length;
+            } else if (module === 'wish') {
+                let items = (state.wishes || []).slice().reverse();
+                items = filterByRole(items, FILTER_STATE.wish.filter, 'creator');
+                items = filterBySearch(items, FILTER_STATE.wish.search, ['name', 'desc']);
+                totalItems = items.length;
+            } else if (module === 'history') {
+                let items = (state.history || []).slice().reverse();
+                items = filterBySearch(items, FILTER_STATE.history.search, ['text']);
+                totalItems = items.length;
+            } else if (module === 'space') {
+                let items = state.posts.slice().reverse();
+                items = filterByRole(items, FILTER_STATE.space.filter, 'role');
+                items = filterBySearch(items, FILTER_STATE.space.search, ['title', 'content']);
+                totalItems = items.length;
+            } else {
+                totalItems = 0;
+            }
+
             const totalPages = Math.ceil(totalItems / config.limit) || 1;
             const newPage = config.page + direction;
-            
+
             if (newPage >= 1 && newPage <= totalPages) {
                 config.page = newPage;
                 if (module === 'space') renderSpace();
@@ -2818,6 +3122,7 @@
                 document.getElementById('my-request-list').innerHTML = myPendingRequests.map(req => `<div class="card request-card" style="opacity: 0.9;"><div class="card-info"><h3>${req.name}</h3><p>等待审批中...</p></div><button class="secondary-btn" onclick="deleteRequest(${req.id})">撤销</button></div>`).join('');
             } else myReqSection.style.display = 'none';
 
+
             // 分页数据截取辅助函数
             const getPageItems = (list, config) => {
                 const start = (config.page - 1) * config.limit;
@@ -2840,12 +3145,20 @@
             `).join('') || '<div style="opacity:0.3;text-align:center;padding:10px;">暂无计划</div>';
             renderPagination('wishlist', wishlistItems.length, 'wishlist-pagination');
 
-            // 2. 悬赏任务分页（新发布的排在最上面）
-            const taskItems = (state.tasks || []).slice().reverse();
+            // 2. 悬赏任务分页（支持筛选、搜索、排序）
+            let taskItems = (state.tasks || []).slice().reverse();
+            taskItems = filterByRole(taskItems, FILTER_STATE.task.filter, 'creator');
+            taskItems = filterBySearch(taskItems, FILTER_STATE.task.search, ['name', 'desc']);
+            if (FILTER_STATE.task.sortByPoints) {
+                taskItems = sortByPointsDesc(taskItems);
+            }
+            // 更新排序按钮状态
+            const taskSortBtn = document.getElementById('task-sort-btn');
+            if (taskSortBtn) taskSortBtn.classList.toggle('active', FILTER_STATE.task.sortByPoints);
             document.getElementById('task-list').innerHTML = getPageItems(taskItems, PAGINATION.task).map(task => {
                 const isCreator = task.creator === role;
                 const canModify = isCreator && (Date.now() - task.id < 600000); // 10分钟内可修改/删除
-                
+
                 return `
                 <div class="card">
                     <div class="card-info">
@@ -2855,20 +3168,28 @@
                         ${isCreator ? `<div style="font-size:0.7rem; color:#999; margin-top:5px;">${canModify ? '发布10分钟内可修改/删除' : '已发布超过10分钟，不可修改/删除'}</div>` : ''}
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
-                        ${!isCreator ? `<button class="action-btn" onclick="openModal('task_apply', ${task.id})">申请完成</button>` : 
+                        ${!isCreator ? `<button class="action-btn" onclick="openModal('task_apply', ${task.id})">申请完成</button>` :
                         (canModify ? `
                             <button class="secondary-btn" style="padding: 4px 10px; font-size: 0.75rem;" onclick="openModal('task_edit', ${task.id})">修改</button>
                             <button class="secondary-btn delete-btn" onclick="deleteItem('task', ${task.id})">×</button>
                         ` : '')}
                     </div>
                 </div>
-            `;}).join('');
+            `;}).join('') || '<div style="opacity:0.3;text-align:center;padding:10px;">暂无任务</div>';
             renderPagination('task', taskItems.length, 'task-pagination');
 
 
 
-            // 3. 愿望商店分页（新发布的排在最上面）
-            const wishItems = (state.wishes || []).slice().reverse();
+            // 3. 愿望商店分页（支持筛选、搜索、排序）
+            let wishItems = (state.wishes || []).slice().reverse();
+            wishItems = filterByRole(wishItems, FILTER_STATE.wish.filter, 'creator');
+            wishItems = filterBySearch(wishItems, FILTER_STATE.wish.search, ['name', 'desc']);
+            if (FILTER_STATE.wish.sortByPoints) {
+                wishItems = sortByPointsDesc(wishItems);
+            }
+            // 更新排序按钮状态
+            const wishSortBtn = document.getElementById('wish-sort-btn');
+            if (wishSortBtn) wishSortBtn.classList.toggle('active', FILTER_STATE.wish.sortByPoints);
             document.getElementById('wish-list').innerHTML = getPageItems(wishItems, PAGINATION.wish).map(wish => `
                 <div class="card">
                     <div class="card-info">
@@ -2878,11 +3199,12 @@
                     </div>
                     ${wish.creator !== role ? `<button class="action-btn" onclick="confirmRedeemWish(${wish.id})">申请兑换</button>` : `<button class="secondary-btn delete-btn" onclick="deleteItem('wish', ${wish.id})">×</button>`}
                 </div>
-            `).join('');
+            `).join('') || '<div style="opacity:0.3;text-align:center;padding:10px;">暂无愿望</div>';
             renderPagination('wish', wishItems.length, 'wish-pagination');
 
-            // 4. 操作记录分页
-            const historyItems = (state.history || []).slice().reverse();
+            // 4. 操作记录分页（支持搜索）
+            let historyItems = (state.history || []).slice().reverse();
+            historyItems = filterBySearch(historyItems, FILTER_STATE.history.search, ['text']);
             document.getElementById('history-list').innerHTML = getPageItems(historyItems, PAGINATION.history).map(h => `
                 <div class="history-item">
                     <span>${h.text}</span>
@@ -2909,6 +3231,15 @@
             const spaceSection = document.getElementById('space-section');
             spaceSection.style.display = 'block';
             document.body.classList.add('space-mode-active');
+
+            // 加载当前用户的未读评论状态
+            const unreadKey = `unread_comments_${currentUser}`;
+            try {
+                unreadComments = JSON.parse(localStorage.getItem(unreadKey) || '{}');
+            } catch (e) {
+                unreadComments = {};
+            }
+
             renderSpace();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
@@ -2916,6 +3247,10 @@
         function exitSpaceMode(toHome = false) {
             document.body.classList.remove('space-mode-active');
             document.getElementById('space-section').style.display = 'none';
+
+            // 清除内存中的红点数据（但保留localStorage中的数据，以便下次进入时仍显示）
+            unreadComments = {};
+
             if (!toHome) {
                 toggleLoveHub(true);
             } else {
@@ -2930,16 +3265,49 @@
 
         function renderSpace() {
             const list = document.getElementById('space-list');
-            const posts = state.posts.slice().reverse();
-            const pagePosts = posts.slice((PAGINATION.space.page - 1) * PAGINATION.space.limit, PAGINATION.space.page * PAGINATION.space.limit);
+
+            // 应用筛选和搜索
+            let posts = state.posts.slice().reverse();
+            posts = filterByRole(posts, FILTER_STATE.space.filter, 'role');
+            posts = filterBySearch(posts, FILTER_STATE.space.search, ['title', 'content']);
+
+            // 将有新评论的邮票排在前面
+            posts.sort((a, b) => {
+                const aUnread = unreadComments[a.id] ? 1 : 0;
+                const bUnread = unreadComments[b.id] ? 1 : 0;
+                return bUnread - aUnread;
+            });
+
+            const limit = PAGINATION.space.limit;
+            const startIndex = (PAGINATION.space.page - 1) * limit;
+            const pagePosts = posts.slice(startIndex, startIndex + limit);
+
+            // 补充空邮票占位，确保每页都显示完整网格
+            const displayItems = [...pagePosts];
+            while (displayItems.length < limit) {
+                displayItems.push(null); // null 表示空邮票
+            }
 
             // 使用邮票网格布局
             list.innerHTML = `
                 <div class="stamp-grid">
-                    ${pagePosts.map(post => {
+                    ${displayItems.map((post, index) => {
+                        // 空邮票占位
+                        if (!post) {
+                            return `
+                            <div class="stamp-item stamp-empty" style="opacity: 0.4; cursor: default;">
+                                <div class="stamp-preview-container">
+                                    <span style="font-size:1.5rem;">✉️</span>
+                                </div>
+                                <div class="stamp-text">待发布</div>
+                            </div>
+                            `;
+                        }
                         const authorName = state.nicknames[post.role] || state.accounts[post.role];
+                        const hasUnread = unreadComments[post.id];
                         return `
                         <div class="stamp-item" onclick="openPostDetail(${post.id})">
+                            ${hasUnread ? '<span class="stamp-badge"></span>' : ''}
                             <div class="stamp-preview-container">
                                 ${post.imageId || post.image ? `<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" data-post-id="${post.id}" class="stamp-preview-img lazy-stamp-img">` : '<span style="font-size:1.5rem;">✍️</span>'}
                             </div>
@@ -2949,7 +3317,7 @@
                     }).join('')}
                 </div>
             `;
-            
+
             // 延迟加载邮票缩略图
             setTimeout(() => {
                 document.querySelectorAll('.lazy-stamp-img').forEach(async img => {
@@ -2975,13 +3343,25 @@
                     img.classList.remove('lazy-stamp-img');
                 });
             }, 100);
-            
+
             renderPagination('space', posts.length, 'space-pagination');
         }
 
         async function openPostDetail(postId) {
             const post = state.posts.find(p => p.id === postId);
             if (!post) return;
+
+            // 清除红点并更新localStorage
+            if (unreadComments[postId]) {
+                delete unreadComments[postId];
+                const unreadKey = `unread_comments_${currentUser}`;
+                try {
+                    const unreadData = JSON.parse(localStorage.getItem(unreadKey) || '{}');
+                    delete unreadData[postId];
+                    localStorage.setItem(unreadKey, JSON.stringify(unreadData));
+                } catch (e) {}
+                renderSpace(); // 重新渲染以更新红点状态
+            }
 
             const overlay = document.getElementById('post-detail-overlay');
             const titleEl = document.getElementById('large-stamp-title');
@@ -2998,7 +3378,7 @@
             timeEl.innerText = post.time.split(' ')[0]; // 只显示日期
 
             imgContainer.innerHTML = '<div style="color:#999;font-size:0.8rem;">正在加载图片...</div>';
-            
+
             if (post.imageId || post.image) {
                 let imgSrc = post.image;
                 if (!imgSrc && post.imageId) {
@@ -3021,6 +3401,9 @@
                 imgContainer.innerHTML = '<div style="color:#eee;font-size:3rem;opacity:0.2;">✨</div>';
             }
 
+            // 渲染评论
+            renderStampComments(post);
+
             // 设置按钮
             if (post.role === currentUser) {
                 document.getElementById('large-stamp-actions').style.display = 'flex';
@@ -3032,6 +3415,110 @@
 
             overlay.style.display = 'flex';
             document.body.style.overflow = 'hidden'; // 禁止主页滚动
+
+            // 保存当前查看的postId用于评论
+            overlay.dataset.postId = postId;
+        }
+
+        let currentPostIdForComment = null;
+
+        function renderStampComments(post) {
+            const commentsList = document.getElementById('stamp-comments-list');
+            if (!post.comments || post.comments.length === 0) {
+                commentsList.innerHTML = '<div style="color:#999; font-size:0.85rem; text-align:center; padding:20px;">暂无评论</div>';
+                return;
+            }
+
+            commentsList.innerHTML = post.comments.map((comment, idx) => {
+                const commenterName = state.nicknames[comment.role] || state.accounts[comment.role];
+                const replies = comment.replies || [];
+                return `
+                    <div class="comment-item">
+                        <div class="comment-author">${commenterName}</div>
+                        <div class="comment-text">${comment.text}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span class="comment-time">${comment.time}</span>
+                            <button class="reply-btn" onclick="promptReply(${post.id}, ${idx})">回复</button>
+                        </div>
+                        ${replies.length > 0 ? replies.map(reply => {
+                            const replierName = state.nicknames[reply.role] || state.accounts[reply.role];
+                            return `
+                                <div class="reply-item">
+                                    <span style="font-weight:600; color:#ff69b4;">${replierName}</span>: ${reply.text}
+                                    <span style="opacity:0.4; font-size:0.7rem; margin-left:8px;">${reply.time}</span>
+                                </div>
+                            `;
+                        }).join('') : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function addStampComment() {
+            const input = document.getElementById('stamp-comment-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const overlay = document.getElementById('post-detail-overlay');
+            const postId = parseInt(overlay.dataset.postId);
+            if (!postId) return;
+
+            const saved = await commitStateChange((draft) => {
+                const post = draft.posts.find(p => p.id === postId);
+                if (!post) throw new Error('动态不存在');
+
+                if (!post.comments) post.comments = [];
+                post.comments.push({
+                    role: currentUser,
+                    text: text,
+                    time: formatLocalTime(new Date()),
+                    replies: []
+                });
+            }, { errorMessage: '评论失败，请稍后重试。' });
+
+            if (!saved) return;
+
+            input.value = '';
+
+            // 给对方设置红点通知（使用localStorage存储）
+            const otherRole = currentUser === 'girl' ? 'boy' : 'girl';
+            const unreadKey = `unread_comments_${otherRole}`;
+            let unreadData = {};
+            try {
+                unreadData = JSON.parse(localStorage.getItem(unreadKey) || '{}');
+            } catch (e) {}
+            unreadData[postId] = true;
+            localStorage.setItem(unreadKey, JSON.stringify(unreadData));
+
+            // 刷新评论
+            const post = state.posts.find(p => p.id === postId);
+            if (post) {
+                renderStampComments(post);
+            }
+        }
+
+        async function promptReply(postId, commentIdx) {
+            const text = prompt('回复评论:');
+            if (!text || !text.trim()) return;
+
+            await commitStateChange((draft) => {
+                const post = draft.posts.find(p => p.id === postId);
+                if (!post) throw new Error('动态不存在');
+                if (!post.comments?.[commentIdx]) throw new Error('评论不存在');
+
+                if (!post.comments[commentIdx].replies) post.comments[commentIdx].replies = [];
+                post.comments[commentIdx].replies.push({
+                    role: currentUser,
+                    text: text.trim(),
+                    time: formatLocalTime(new Date())
+                });
+            }, { errorMessage: '回复失败，请稍后重试。' });
+
+            // 刷新评论
+            const post = state.posts.find(p => p.id === postId);
+            if (post) {
+                renderStampComments(post);
+            }
         }
 
         function closePostDetail() {
@@ -3759,12 +4246,20 @@
                 <span id="large-stamp-author"></span>
                 <span id="large-stamp-time"></span>
             </div>
-            
-            <!-- 操作按钮 -->
-            <div id="large-stamp-actions" style="position: absolute; bottom: -50px; display: flex; gap: 10px;">
-                <button id="edit-post-btn" class="secondary-btn" style="background: white; border: 1px solid white;">修改</button>
-                <button id="delete-post-btn" class="secondary-btn delete-btn" style="background: white; border: 1px solid #ff4d4f;">删除</button>
+        </div>
+        <!-- 评论区域 -->
+        <div class="stamp-comments-section">
+            <div class="comments-header">💬 评论</div>
+            <div id="stamp-comments-list" class="comments-list"></div>
+            <div class="comment-input-area">
+                <input type="text" id="stamp-comment-input" placeholder="写下你的评论..." style="flex:1; padding:10px 15px; border-radius:20px; border:1px solid #eee; outline:none;">
+                <button onclick="addStampComment()" style="padding:10px 20px; border-radius:20px; background:#ff69b4; color:white; border:none; cursor:pointer; font-weight:600;">发送</button>
             </div>
+        </div>
+        <!-- 操作按钮 -->
+        <div id="large-stamp-actions" style="position: absolute; bottom: -50px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px;">
+            <button id="edit-post-btn" class="secondary-btn" style="background: white; border: 1px solid white;">修改</button>
+            <button id="delete-post-btn" class="secondary-btn delete-btn" style="background: white; border: 1px solid #ff4d4f;">删除</button>
         </div>
     </div>
 </body>
