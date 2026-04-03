@@ -315,19 +315,24 @@
             position: absolute;
             bottom: 15px;
             right: 15px;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.8);
-            border: 1px solid var(--theme-primary);
+            padding: 10px 20px;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 2px solid var(--theme-primary);
             color: var(--theme-primary);
-            font-size: 24px;
+            font-size: 0.9rem;
             font-weight: bold;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 100;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: var(--transition);
+        }
+        .love-hub-close-new:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
         }
 
         @media (max-width: 480px) {
@@ -591,7 +596,7 @@
             .hotspot-nest { top: 40%; left: 10%; width: 80%; height: 20%; }
             .hotspot-space { top: 65%; left: 10%; width: 80%; height: 20%; }
             .hotspot-label { font-size: 0.8rem; padding: 6px 15px; }
-            .love-hub-close-new { bottom: 20px; padding: 10px 35px; font-size: 0.8rem; }
+            .love-hub-close-new { bottom: 20px; padding: 8px 16px; font-size: 0.85rem; }
             
             /* 首页入口按钮移动端适配 */
             .home-space-entry {
@@ -1063,7 +1068,7 @@
         .feature-box .section-title { color: rgba(0, 0, 0, 0.7); }
 
         @media (max-width: 480px) {
-            header { padding: 12px 12px 10px; gap: 10px; }
+            header { padding: 12px 12px 15px; gap: 12px; }
             .logout-btn { right: 12px; top: 12px; padding: 5px 10px; font-size: 0.7rem; }
             #pet-reset-btn { left: 12px; top: 12px; padding: 5px 10px; font-size: 0.7rem; }
             
@@ -1073,12 +1078,24 @@
                 display: none !important; 
             }
 
-            .score-label { font-size: 0.82rem; }
-            .score-value { font-size: 1.85rem; }
-            .header-top-actions { gap: 8px !important; }
-            .header-top-actions .checkin-btn { margin-top: 6px; padding: 7px 12px; font-size: 0.82rem; }
-            .weather-widget { margin-top: 10px; padding: 10px 12px; max-width: calc(100% - 24px); }
-            .dog-interaction { margin-top: 10px !important; padding: 2px 10px !important; }
+            .score-label { font-size: 0.82rem; margin-bottom: 8px; }
+            .score-value { font-size: 1.85rem; margin-bottom: 5px; }
+            .header-top-actions { 
+                gap: 8px !important; 
+                flex-wrap: wrap; 
+                justify-content: center; 
+            }
+            .header-top-actions .checkin-btn { 
+                margin-top: 4px; 
+                padding: 7px 14px; 
+                font-size: 0.8rem; 
+            }
+            .weather-widget { 
+                margin-top: 12px; 
+                padding: 10px 12px; 
+                max-width: calc(100% - 24px); 
+            }
+            .dog-interaction { margin-top: 12px !important; padding: 2px 10px !important; }
             #pet-origin-anchor { width: 24px !important; height: 0 !important; }
             .card { padding: 15px; flex-direction: column; align-items: flex-start; gap: 12px; }
             .card > div:last-child { width: 100%; display: flex; justify-content: space-between; align-items: center; }
@@ -1181,9 +1198,10 @@
         <button class="pet-ctrl-btn" onclick="openModal('manual_location')">📍 提交城市</button>
     </div>
 
-    <!-- 宠物互动计时器显示 -->
-    <div id="pet-timer-display" style="position: fixed; top: 120px; left: 20px; background: rgba(255,255,255,0.8); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--theme-primary); color: var(--theme-primary); font-size: 0.8rem; font-weight: bold; z-index: 2100; display: none; backdrop-filter: blur(5px); box-shadow: var(--shadow);">
-        ⏱️ 陪伴中: <span id="pet-timer-value">0.0</span>s
+    <!-- 宠物互动计时器显示 (累积时长) -->
+    <div id="pet-timer-display" style="position: fixed; top: 120px; left: 20px; background: rgba(255,255,255,0.8); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--theme-primary); color: var(--theme-text); font-size: 0.8rem; z-index: 2100; display: none; backdrop-filter: blur(5px); box-shadow: var(--shadow); cursor: default;">
+        <span style="font-weight: bold; color: var(--theme-primary);">⏱️ 累积陪伴:</span> <span id="pet-timer-value">0</span>s
+        <span id="pet-session-plus" style="color: #ff4d4f; font-size: 0.7rem; font-weight: bold; display: none;"> +0.0s</span>
     </div>
 
 
@@ -1541,6 +1559,7 @@
             return {
                 scores: { girl: 0, boy: 0 },
                 dogClicks: { girl: 0, boy: 0 },
+                petCompTime: { girl: 0, boy: 0 }, // 宠物陪伴时间 (秒)
                 accounts: { girl: null, boy: null },
                 nicknames: { girl: null, boy: null },
                 passwords: { girl: null, boy: null },
@@ -1648,6 +1667,10 @@
                 dogClicks: {
                     girl: normalizeNumber(rawState.dogClicks?.girl),
                     boy: normalizeNumber(rawState.dogClicks?.boy)
+                },
+                petCompTime: {
+                    girl: normalizeNumber(rawState.petCompTime?.girl),
+                    boy: normalizeNumber(rawState.petCompTime?.boy)
                 },
                 accounts: {
                     girl: normalizeText(rawState.accounts?.girl),
@@ -3632,6 +3655,21 @@
             const boyCount = document.getElementById('dog-count-boy');
             if (girlCount) girlCount.innerText = state.dogClicks.girl;
             if (boyCount) boyCount.innerText = state.dogClicks.boy;
+            
+            // 顺便渲染累计时长（如果有的话）
+            renderPetCompTime();
+        }
+
+        function renderPetCompTime() {
+            const display = document.getElementById('pet-timer-display');
+            const valueEl = document.getElementById('pet-timer-value');
+            if (currentUser && display && valueEl) {
+                display.style.display = 'block'; // 登录后常驻显示
+                const totalSec = Math.floor(state.petCompTime[currentUser] || 0);
+                valueEl.innerText = totalSec;
+            } else if (display) {
+                display.style.display = 'none';
+            }
         }
 
 
@@ -3885,11 +3923,11 @@
                 setPos(activeLeader, startLeft + dx, startTop + dy);
             }, { passive: false });
 
-            const onPointerEnd = (e) => {
+            const onPointerEnd = async (e) => {
                 if (!dragging || !activeLeader) return;
                 
                 // 停止计时
-                if (activeLeaderKey) handlePetUp(activeLeaderKey);
+                if (activeLeaderKey) await handlePetUp(activeLeaderKey);
 
                 dragging = false;
                 setDragScrollLock(false);
@@ -3917,38 +3955,73 @@
         let petHoldStartTime = null;
         let petHoldTimerId = null;
         let currentHoldPet = null;
+        let lastSyncTime = 0; // 上次写入数据库的时间
 
         function handlePetDown(petType) {
             if (!currentUser) return;
             currentHoldPet = petType;
             petHoldStartTime = Date.now();
+            lastSyncTime = petHoldStartTime;
             
             const timerDisplay = document.getElementById('pet-timer-display');
-            const timerValue = document.getElementById('pet-timer-value');
+            const sessionPlus = document.getElementById('pet-session-plus');
             if (timerDisplay) timerDisplay.style.display = 'block';
+            if (sessionPlus) sessionPlus.style.display = 'inline';
 
             if (petHoldTimerId) clearInterval(petHoldTimerId);
-            petHoldTimerId = setInterval(() => {
-                const elapsed = (Date.now() - petHoldStartTime) / 1000;
-                if (timerValue) timerValue.innerText = elapsed.toFixed(1);
+            petHoldTimerId = setInterval(async () => {
+                const now = Date.now();
+                const elapsedSinceLast = (now - lastSyncTime) / 1000;
+                const totalElapsed = (now - petHoldStartTime) / 1000;
                 
-                // 每按住一秒左右加一个特效或震动（可选，先只改计时）
+                // 更新UI上的单次时长显示
+                const sessionPlus = document.getElementById('pet-session-plus');
+                if (sessionPlus) sessionPlus.innerText = ` +${totalElapsed.toFixed(1)}s`;
+                
+                // 每10秒自动同步一次数据库
+                if (elapsedSinceLast >= 10) {
+                    const diff = elapsedSinceLast;
+                    lastSyncTime = now;
+                    
+                    await commitStateChange((draft) => {
+                        if (!draft.petCompTime) draft.petCompTime = { girl: 0, boy: 0 };
+                        draft.petCompTime[currentUser] += diff;
+                    }, { render: true, errorMessage: null });
+                }
             }, 100);
         }
 
-        function handlePetUp(petType) {
+        async function handlePetUp(petType) {
             if (currentHoldPet !== petType) return;
             
             if (petHoldTimerId) {
                 clearInterval(petHoldTimerId);
                 petHoldTimerId = null;
             }
+
+            // 停止计时时，将剩余不足10秒的时间也同步一次
+            const now = Date.now();
+            const finalDiff = (now - lastSyncTime) / 1000;
             
-            const timerDisplay = document.getElementById('pet-timer-display');
-            if (timerDisplay) timerDisplay.style.display = 'none';
+            if (finalDiff > 0.5) { // 至少按了半秒才记入
+                await commitStateChange((draft) => {
+                    if (!draft.petCompTime) draft.petCompTime = { girl: 0, boy: 0 };
+                    draft.petCompTime[currentUser] += finalDiff;
+                }, { render: true, errorMessage: null });
+            }
+
+            const sessionPlus = document.getElementById('pet-session-plus');
+            if (sessionPlus) {
+                sessionPlus.innerText = " +0.0s";
+                sessionPlus.style.display = 'none';
+            }
             
             currentHoldPet = null;
             petHoldStartTime = null;
+            lastSyncTime = 0;
+            
+            // 确保同步最新状态
+            renderPetCompTime();
         }
 
         async function handleDogClick(e, petType) {
