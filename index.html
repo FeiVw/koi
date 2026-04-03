@@ -852,6 +852,19 @@
             color: white;
         }
 
+        .pet-timer {
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            border: 1px solid var(--theme-primary);
+            color: var(--theme-text);
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 50px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(5px);
+            cursor: default;
+            display: none;
+        }
+
         #pet-reset-btn { display: none; } /* 旧按钮隐藏，使用新容器中的按钮 */
 
 
@@ -1072,6 +1085,17 @@
             .logout-btn { right: 12px; top: 12px; padding: 5px 10px; font-size: 0.7rem; }
             #pet-reset-btn { left: 12px; top: 12px; padding: 5px 10px; font-size: 0.7rem; }
             
+            /* 手机端宠物控制按钮缩小 */
+            .pet-controls { 
+                left: 10px; 
+                top: 10px; 
+                gap: 5px; 
+            }
+            .pet-ctrl-btn, .pet-timer {
+                padding: 4px 8px;
+                font-size: 0.65rem;
+            }
+            
             /* 手机端在非首页（如恋爱空间、枢纽页）隐藏宠物控制按钮，防止堆叠 */
             body.space-mode-active .pet-controls, 
             body.hub-active .pet-controls { 
@@ -1196,11 +1220,11 @@
         <button class="pet-ctrl-btn" onclick="resetPetsToCenter()">宠物复位</button>
         <button id="pet-link-toggle" class="pet-ctrl-btn active" onclick="togglePetLink()">🔗 链接中</button>
         <button class="pet-ctrl-btn" onclick="openModal('manual_location')">📍 提交城市</button>
+        <div id="pet-timer-display" class="pet-timer">
+            <span>⏱️ <span id="pet-timer-value">0</span>s</span>
+            <span id="pet-session-plus" style="color: var(--theme-primary); display: none;"> +0.0s</span>
+        </div>
     </div>
-
-    <!-- 宠物互动计时器显示 (累积时长) -->
-    <div id="pet-timer-display" style="position: fixed; top: 120px; left: 20px; background: rgba(255,255,255,0.8); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--theme-primary); color: var(--theme-text); font-size: 0.8rem; z-index: 2100; display: none; backdrop-filter: blur(5px); box-shadow: var(--shadow); cursor: default;">
-        <span style="font-weight: bold; color: var(--theme-primary);">⏱️ 累积陪伴:</span> <span id="pet-timer-value">0</span>s
         <span id="pet-session-plus" style="color: #ff4d4f; font-size: 0.7rem; font-weight: bold; display: none;"> +0.0s</span>
     </div>
 
@@ -1393,6 +1417,7 @@
 
         <footer class="system-footer">
             <p style="font-size: 0.8rem; opacity: 0.4;">爱的储蓄罐 v12.1</p>
+            <button class="reset-trigger" onclick="resetPetCompTime()" style="margin-bottom: 10px; background: rgba(24, 144, 255, 0.1); color: #1890ff; border: 1px dashed #1890ff;">⏱️ 清零累计陪伴时间</button>
             <button class="reset-trigger" onclick="cleanOldImageData()" style="margin-bottom: 10px; background: rgba(250, 173, 20, 0.1); color: #faad14; border: 1px dashed #faad14;">🗑️ 清理旧图片数据 (释放空间)</button>
             <button class="reset-trigger" onclick="openResetModal()">⚠️ 重置系统数据</button>
         </footer>
@@ -1669,8 +1694,8 @@
                     boy: normalizeNumber(rawState.dogClicks?.boy)
                 },
                 petCompTime: {
-                    girl: normalizeNumber(rawState.petCompTime?.girl),
-                    boy: normalizeNumber(rawState.petCompTime?.boy)
+                    girl: Math.min(normalizeNumber(rawState.petCompTime?.girl), 315360000), // 最大100年
+                    boy: Math.min(normalizeNumber(rawState.petCompTime?.boy), 315360000)
                 },
                 accounts: {
                     girl: normalizeText(rawState.accounts?.girl),
@@ -3955,13 +3980,14 @@
         let petHoldStartTime = null;
         let petHoldTimerId = null;
         let currentHoldPet = null;
-        let lastSyncTime = 0; // 上次写入数据库的时间
+        let localAccumulatedTime = 0; // 本次长按累计的本地时间（秒）
+        let isPetCompTimeResetting = false; // 防止清零时同步冲突的标志
 
         function handlePetDown(petType) {
             if (!currentUser) return;
             currentHoldPet = petType;
             petHoldStartTime = Date.now();
-            lastSyncTime = petHoldStartTime;
+            localAccumulatedTime = 0; // 重置本地累计
             
             const timerDisplay = document.getElementById('pet-timer-display');
             const sessionPlus = document.getElementById('pet-session-plus');
@@ -3969,25 +3995,15 @@
             if (sessionPlus) sessionPlus.style.display = 'inline';
 
             if (petHoldTimerId) clearInterval(petHoldTimerId);
-            petHoldTimerId = setInterval(async () => {
+            petHoldTimerId = setInterval(() => {
+                if (isPetCompTimeResetting) return; // 清零中跳过
+                
                 const now = Date.now();
-                const elapsedSinceLast = (now - lastSyncTime) / 1000;
                 const totalElapsed = (now - petHoldStartTime) / 1000;
                 
                 // 更新UI上的单次时长显示
                 const sessionPlus = document.getElementById('pet-session-plus');
                 if (sessionPlus) sessionPlus.innerText = ` +${totalElapsed.toFixed(1)}s`;
-                
-                // 每10秒自动同步一次数据库
-                if (elapsedSinceLast >= 10) {
-                    const diff = elapsedSinceLast;
-                    lastSyncTime = now;
-                    
-                    await commitStateChange((draft) => {
-                        if (!draft.petCompTime) draft.petCompTime = { girl: 0, boy: 0 };
-                        draft.petCompTime[currentUser] += diff;
-                    }, { render: true, errorMessage: null });
-                }
             }, 100);
         }
 
@@ -3999,14 +4015,22 @@
                 petHoldTimerId = null;
             }
 
-            // 停止计时时，将剩余不足10秒的时间也同步一次
+            // 计算本次长按的总时长
             const now = Date.now();
-            const finalDiff = (now - lastSyncTime) / 1000;
+            const totalTime = (now - petHoldStartTime) / 1000;
             
-            if (finalDiff > 0.5) { // 至少按了半秒才记入
-                await commitStateChange((draft) => {
-                    if (!draft.petCompTime) draft.petCompTime = { girl: 0, boy: 0 };
-                    draft.petCompTime[currentUser] += finalDiff;
+            if (totalTime > 0.5 && !isPetCompTimeResetting) { // 至少按了半秒才记入
+                // 立即更新本地显示（乐观更新）
+                state.petCompTime[currentUser] = (state.petCompTime[currentUser] || 0) + totalTime;
+                renderPetCompTime();
+                
+                // 后台同步到数据库
+                commitStateChange((draft) => {
+                    // 强制使用数据库中的值加上本次时长，避免竞态
+                    const dbValue = draft.petCompTime?.[currentUser] || 0;
+                    // 如果数据库值异常大（超过100年），强制重置为合理值
+                    const safeValue = dbValue > 3153600000 ? 0 : dbValue;
+                    draft.petCompTime[currentUser] = safeValue + totalTime;
                 }, { render: true, errorMessage: null });
             }
 
@@ -4018,10 +4042,7 @@
             
             currentHoldPet = null;
             petHoldStartTime = null;
-            lastSyncTime = 0;
-            
-            // 确保同步最新状态
-            renderPetCompTime();
+            localAccumulatedTime = 0;
         }
 
         async function handleDogClick(e, petType) {
@@ -4101,6 +4122,45 @@
             document.getElementById('modal-form').style.display = 'block'; 
             document.getElementById('day-detail').style.display = 'none'; 
             document.getElementById('modal-overlay').style.display = 'flex'; 
+        }
+
+        async function resetPetCompTime() {
+            if (!currentUser) return alert('请先登录后再进行此操作');
+            if (!confirm('⚠️ 这将清零所有用户的累计陪伴时间数据。\n\n确定要执行吗？')) return;
+
+            // 设置标志，防止同步操作干扰
+            isPetCompTimeResetting = true;
+            
+            // 清除正在进行的计时
+            if (petHoldTimerId) {
+                clearInterval(petHoldTimerId);
+                petHoldTimerId = null;
+            }
+            currentHoldPet = null;
+            petHoldStartTime = null;
+
+            try {
+                // 先更新本地状态
+                state.petCompTime = { girl: 0, boy: 0 };
+                renderPetCompTime();
+                
+                // 强制同步到数据库
+                const client = getDatabaseClient();
+                if (client) {
+                    const currentState = await fetchStateFromDatabase();
+                    if (currentState) {
+                        currentState.petCompTime = { girl: 0, boy: 0 };
+                        await saveData(currentState);
+                    }
+                }
+                
+                alert('✅ 累计陪伴时间已清零');
+            } catch (e) {
+                console.error('清零失败:', e);
+                alert('清零失败，请重试');
+            } finally {
+                isPetCompTimeResetting = false;
+            }
         }
 
         async function cleanOldImageData() {
