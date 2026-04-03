@@ -840,6 +840,8 @@
             box-shadow: var(--shadow);
             transition: all 0.2s;
             backdrop-filter: blur(5px);
+            min-width: 100px;
+            text-align: center;
         }
 
         .pet-ctrl-btn:hover {
@@ -863,6 +865,17 @@
             backdrop-filter: blur(5px);
             cursor: default;
             display: none;
+            min-width: 110px;
+            white-space: nowrap;
+        }
+        .pet-timer span {
+            display: inline-block;
+            min-width: 50px;
+        }
+        #pet-session-plus {
+            display: inline-block;
+            min-width: 55px;
+            text-align: right;
         }
 
         #pet-reset-btn { display: none; } /* 旧按钮隐藏，使用新容器中的按钮 */
@@ -1094,6 +1107,13 @@
             .pet-ctrl-btn, .pet-timer {
                 padding: 4px 8px;
                 font-size: 0.65rem;
+                min-width: 90px;
+            }
+            .pet-timer span {
+                min-width: 40px;
+            }
+            #pet-session-plus {
+                min-width: 45px;
             }
             
             /* 手机端在非首页（如恋爱空间、枢纽页）隐藏宠物控制按钮，防止堆叠 */
@@ -4024,14 +4044,14 @@
                 state.petCompTime[currentUser] = (state.petCompTime[currentUser] || 0) + totalTime;
                 renderPetCompTime();
                 
-                // 后台同步到数据库
+                // 后台同步到数据库，不触发全局渲染避免跳动
                 commitStateChange((draft) => {
                     // 强制使用数据库中的值加上本次时长，避免竞态
                     const dbValue = draft.petCompTime?.[currentUser] || 0;
                     // 如果数据库值异常大（超过100年），强制重置为合理值
                     const safeValue = dbValue > 3153600000 ? 0 : dbValue;
                     draft.petCompTime[currentUser] = safeValue + totalTime;
-                }, { render: true, errorMessage: null });
+                }, { render: false, errorMessage: null });
             }
 
             const sessionPlus = document.getElementById('pet-session-plus');
